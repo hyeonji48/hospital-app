@@ -225,7 +225,7 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
   }, [step, pathD]);
 
   return (
-    <div className="w-full rounded-2xl overflow-hidden bg-white shadow-sm flex flex-col select-none animate-[fadeIn_0.3s_ease-out]">
+    <div className={`w-full rounded-2xl overflow-hidden bg-white shadow-sm flex flex-col select-none animate-[fadeIn_0.3s_ease-out] ${fullScreen ? 'h-full' : ''}`}>
       {/* Floor banner */}
       <div className="bg-[#2F6EFF] text-white px-4 py-2.5 flex items-center justify-between shrink-0">
         <span className="text-base font-medium">🗺️ {floorLabel}</span>
@@ -245,8 +245,8 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
         </div>
       </div>
 
-      <div className="p-2 bg-[#F8F9FC] flex-1 flex items-center justify-center overflow-hidden">
-        <svg viewBox={`0 0 ${vw} ${vh}`} className={fullScreen ? "w-full h-full" : "w-full h-[390px] max-sm:h-[42vh]"}>
+      <div className="p-2 bg-[#F8F9FC] flex-1 flex items-center justify-center overflow-hidden min-h-0">
+        <svg viewBox={`0 0 ${vw} ${vh}`} className={fullScreen ? "w-full h-full" : "w-full h-[390px] max-sm:h-[42vh]"} preserveAspectRatio="xMidYMid meet">
           {/* Group that undergoes navigation transform (rotation, panning, zooming) */}
           <g transform={navTransform}>
             {/* Background */}
