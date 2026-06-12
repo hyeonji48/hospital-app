@@ -37,8 +37,8 @@ function MapFullScreen({ step, onClose }: { step: NavStep; onClose: () => void }
         <p className="text-5xl font-extrabold text-slate-900">약   도</p>
       </div>
 
-      <div className="flex-1 my-4 flex flex-col justify-center">
-        <HospitalFloorMap step={step} />
+      <div className="flex-1 my-4 flex flex-col justify-center min-h-0">
+        <HospitalFloorMap step={step} fullScreen />
       </div>
 
       <div className="shrink-0 pt-2">

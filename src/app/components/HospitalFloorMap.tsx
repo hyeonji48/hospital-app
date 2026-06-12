@@ -100,9 +100,10 @@ function getCorridorY(floor: number): { y: number; h: number } {
 // ─── Main component ──────────────────────────────────────────
 interface Props {
   step: NavStep;
+  fullScreen?: boolean;
 }
 
-export function HospitalFloorMap({ step }: Props) {
+export function HospitalFloorMap({ step, fullScreen = false }: Props) {
   const pathRef = useRef<SVGPathElement>(null);
 
   const rooms = getFloorRooms(step.floor);
@@ -161,29 +162,35 @@ export function HospitalFloorMap({ step }: Props) {
   const maxRy = Math.max(0, ry) + pad;
 
   // Screen layout configuration:
-  const tx = 120; // Center X of portrait viewBox (width = 240)
-  const ty = 330; // Bottom Y of portrait viewBox (height = 360) for forward sight view
+  const vw = fullScreen ? 320 : 240;
+  const vh = fullScreen ? 480 : 360;
+  const tx = vw / 2;
+  const ty = vh - 30; // Bottom of viewBox for forward sight view
 
   // We want to fit all points within:
-  // X: [15, 225] (15px margin from edges -> 105px from center 120)
-  // Y: [50, 355] (50px margin from top -> 280px from ty 330, 5px margin from bottom -> 25px from ty 330)
-  let maxAllowedScale = 2.0; // Higher default zoom ceiling
-  const minAllowedScale = 0.35; // Lower floor to fit extremely far destinations
+  // X: [15, vw-15] margin from edges
+  // Y: [50, vh-5] margin from top/bottom
+  let maxAllowedScale = fullScreen ? 2.5 : 2.0;
+  const minAllowedScale = fullScreen ? 0.3 : 0.35;
+
+  const halfW = vw / 2 - 15; // horizontal budget from center
+  const topBudget = vh - 80;   // vertical budget upward from ty
+  const bottomBudget = 25;     // vertical budget downward from ty
 
   if (minRx < 0) {
-    const sVal = -105 / minRx;
+    const sVal = -halfW / minRx;
     if (sVal < maxAllowedScale) maxAllowedScale = sVal;
   }
   if (maxRx > 0) {
-    const sVal = 105 / maxRx;
+    const sVal = halfW / maxRx;
     if (sVal < maxAllowedScale) maxAllowedScale = sVal;
   }
   if (minRy < 0) {
-    const sVal = -280 / minRy; // 280px budget to top margin (y = 50)
+    const sVal = -topBudget / minRy;
     if (sVal < maxAllowedScale) maxAllowedScale = sVal;
   }
   if (maxRy > 0) {
-    const sVal = 25 / maxRy; // 25px budget to absolute bottom (y = 355)
+    const sVal = bottomBudget / maxRy;
     if (sVal < maxAllowedScale) maxAllowedScale = sVal;
   }
 
@@ -239,7 +246,7 @@ export function HospitalFloorMap({ step }: Props) {
       </div>
 
       <div className="p-2 bg-[#F8F9FC] flex-1 flex items-center justify-center overflow-hidden">
-        <svg viewBox="0 0 240 360" className="w-full h-[390px] max-sm:h-[42vh]">
+        <svg viewBox={`0 0 ${vw} ${vh}`} className={fullScreen ? "w-full h-full" : "w-full h-[390px] max-sm:h-[42vh]"}>
           {/* Group that undergoes navigation transform (rotation, panning, zooming) */}
           <g transform={navTransform}>
             {/* Background */}
