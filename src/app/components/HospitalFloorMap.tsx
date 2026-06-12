@@ -142,8 +142,6 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
   }, [step]);
 
   // 2. Active GPS Translation, Rotation, and Dynamic Zoom scaling
-  // We want to fit the User position and the Destination position in the rotated coordinate space
-  // so they are BOTH guaranteed to be fully visible in the 240x360 viewport, zoomed in as much as possible!
   const rad = (rotationAngle * Math.PI) / 180;
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
@@ -153,8 +151,7 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
   const rx = destDx * cos - destDy * sin;
   const ry = destDx * sin + destDy * cos;
 
-  // We only fit the User (0, 0) and the Destination (rx, ry)
-  // Include 15px padding around the points to make sure markers aren't clipped at edges
+  // Include padding around the points
   const pad = 15;
   const minRx = Math.min(0, rx) - pad;
   const maxRx = Math.max(0, rx) + pad;
@@ -162,20 +159,17 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
   const maxRy = Math.max(0, ry) + pad;
 
   // Screen layout configuration:
-  const vw = fullScreen ? 320 : 240;
-  const vh = fullScreen ? 480 : 360;
+  const vw = fullScreen ? 600 : 240;
+  const vh = fullScreen ? 900 : 360;
   const tx = vw / 2;
-  const ty = vh - 30; // Bottom of viewBox for forward sight view
+  const ty = fullScreen ? vh * 0.75 : vh - 30;
 
-  // We want to fit all points within:
-  // X: [15, vw-15] margin from edges
-  // Y: [50, vh-5] margin from top/bottom
-  let maxAllowedScale = fullScreen ? 2.5 : 2.0;
-  const minAllowedScale = fullScreen ? 0.3 : 0.35;
+  let maxAllowedScale = fullScreen ? 3.5 : 2.0;
+  const minAllowedScale = fullScreen ? 0.5 : 0.35;
 
-  const halfW = vw / 2 - 15; // horizontal budget from center
-  const topBudget = vh - 80;   // vertical budget upward from ty
-  const bottomBudget = 25;     // vertical budget downward from ty
+  const halfW = vw / 2 - 30;
+  const topBudget = ty - 60;
+  const bottomBudget = vh - ty - 20;
 
   if (minRx < 0) {
     const sVal = -halfW / minRx;
