@@ -1,6 +1,17 @@
 export type DirIcon = "right" | "left" | "up" | "down" | "elevator";
 
 export interface NavStep {
+  /**
+   * **화면에 크게 보이는 단어.** 문장이 아니다.
+   *
+   * 덱의 첫 번째 원칙이 "간단한 텍스트 — 단어 위주"다. 문장을 읽게 만들면
+   * 음성을 둔 이유가 사라진다. 어르신은 화면에서 **어디로**만 보고,
+   * 자세한 설명은 귀로 듣는다.
+   *   화면: "계단 앞에서 / 왼쪽"
+   *   음성: "엘리베이터에서 내려 계단 앞에서 왼쪽으로 도세요. …"
+   */
+  headline: string;
+  /** 음성이 읽는 완전한 문장 */
   instruction: string;
   detail: string;
   dirIcon: DirIcon;
@@ -9,6 +20,13 @@ export interface NavStep {
   destPos: [number, number];
   pathPoints: Array<[number, number]>;
   targetRoom?: string;
+  /**
+   * 이 화면에서 어디까지 가야 하는지.
+   *
+   * 버튼 문구와 음성이 이걸 그대로 말한다 — "다 오시면 눌러주세요"만으로는
+   * 어디까지가 '다 온 것'인지 알 수 없다. 예: "계단 앞", "채혈실", "2층"
+   */
+  checkpoint?: string;
   /** 이 구간 끝에서 꺾어야 하는 지점 (도면 좌표). 지도에 회전 표시를 그린다 */
   turnAt?: [number, number];
   /** 꺾은 뒤 진행할 방향 벡터 */

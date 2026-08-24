@@ -18,38 +18,55 @@ function pick<T>(list: T[], seed: number): T {
   return list[Math.abs(Math.floor(seed)) % list.length];
 }
 
-/** 길안내 한 화면을 읽어주는 문장 */
-export function navPhrase(instruction: string, seed: number, isLast: boolean): string {
-  const body = instruction.replace(/\n/g, " ");
-  // "…입니다"로 끝나는 도착 안내에는 "이번에는" 같은 머리말이 어울리지 않는다
-  const isArrival = /입니다$/.test(body.trim());
-  const lead = isArrival ? "" : pick(["", "", "자, ", "이번에는 ", "그다음, "], seed);
+/**
+ * 길안내 한 화면을 읽어주는 문장.
+ *
+ * ★ 화면마다 **어디까지 가야 하는지**(checkpoint)를 말한다.
+ *   예전에는 서른 번 내내 "다 오시면 버튼을 눌러주세요"만 반복했는데,
+ *   어디까지가 '다 온 것'인지 알려주지 않으니 어르신이 판단할 수가 없었다.
+ *   목표 지점을 말하면 안내가 분명해지고, 화면마다 문장이 달라져
+ *   억지 변주 없이도 반복감이 사라진다.
+ */
+export function navPhrase(
+  instruction: string,
+  seed: number,
+  isLast: boolean,
+  checkpoint?: string,
+): string {
+  const body = instruction.replace(/\n/g, " ").trim();
   const pace = pick(
-    [
-      "천천히 가셔도 됩니다.",
-      "서두르지 않으셔도 됩니다.",
-      "조심해서 가세요.",
-      "천천히 다녀오세요.",
-      "",
-    ],
-    seed + 1,
+    ["천천히 가셔도 됩니다.", "서두르지 않으셔도 됩니다.", "조심해서 가세요.", ""],
+    seed,
   );
-  const after = isLast
-    ? pick(["도착하시면 완료를 눌러주세요.", "다 오시면 완료 버튼을 눌러주세요."], seed)
-    : pick(["다 오시면 버튼을 눌러주세요.", "도착하시면 아래 버튼을 눌러주세요."], seed + 2);
-  return [`${lead}${body}.`, pace, after].filter(Boolean).join(" ");
+
+  // 지시문에 이미 장소가 나오는데 안내 문구에서 또 부르면 같은 말이 두 번 된다.
+  //   ✗ "안내데스크 앞에서 오른쪽으로 도세요. 안내데스크 앞에 오시면 …"
+  //   ✓ "안내데스크 앞에서 오른쪽으로 도세요. 도신 다음 …"
+  const alreadyNamed = Boolean(checkpoint && body.includes(checkpoint.replace(/ 앞$/, "")));
+  const cue = isLast
+    ? `${checkpoint ? `${checkpoint}에 ` : ""}도착하시면 아래 버튼을 눌러주세요.`
+    : alreadyNamed
+      ? "도신 다음 아래 버튼을 눌러주세요."
+      : checkpoint
+        ? `${checkpoint}에 오시면 아래 버튼을 눌러주세요.`
+        : "돌고 나서 아래 버튼을 눌러주세요.";
+
+  return [`${body}.`, pace, cue].filter(Boolean).join(" ");
 }
 
 /** 엘리베이터 화면 */
 export function elevatorPhrase(from: number, to: number, seed: number): string {
-  return pick(
+  // 내려가는데 "올라가세요"라고 하면 안 된다
+  const move = to > from ? "올라가세요" : "내려가세요";
+  const how = pick(
     [
-      `엘리베이터를 타고 ${from}층에서 ${to}층으로 가세요. 내리신 뒤에 도착 버튼을 눌러주세요.`,
-      `${to}층 버튼을 누르시면 됩니다. ${to}층에서 내려 도착 버튼을 눌러주세요.`,
-      `엘리베이터에서 ${to}층을 눌러주세요. 내리신 다음 아래 버튼을 눌러주세요.`,
+      `엘리베이터를 타고 ${to}층으로 가세요.`,
+      `엘리베이터에서 ${to}층을 눌러주세요.`,
+      `엘리베이터로 ${from}층에서 ${to}층으로 ${move}.`,
     ],
     seed,
   );
+  return `${how} ${to}층에서 내리시면 아래 버튼을 눌러주세요.`;
 }
 
 /** 도착 화면 */
@@ -106,6 +123,7 @@ export function buildSpeechScript(
     arrivalDetail: string;
     steps: Array<{
       instruction: string;
+      checkpoint?: string;
       isElevator?: boolean;
       elevatorFrom?: number;
       elevatorTo?: number;
@@ -128,7 +146,7 @@ export function buildSpeechScript(
         clip: navClip(ti, si),
         text: step.isElevator
           ? elevatorPhrase(step.elevatorFrom ?? 1, step.elevatorTo ?? 1, seed)
-          : navPhrase(step.instruction, seed, isLast),
+          : navPhrase(step.instruction, seed, isLast, step.checkpoint),
       });
     });
     out.push({

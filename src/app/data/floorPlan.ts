@@ -29,6 +29,13 @@ export interface Room {
    * AI는 "X-ray"와 "CT"를 구분해서 말해야 하므로 사전에서는 별개로 둔다.
    */
   placeIds?: string[];
+  /**
+   * 말할 때 쓰는 온전한 이름.
+   *
+   * 도면 칸이 좁아 라벨을 줄여 쓴 곳이 있다("진료협력"). 화면에는 짧게 그리되
+   * 음성과 길안내 문구에서는 이 이름을 쓴다.
+   */
+  fullName?: string;
   /** 이 방이 붙어 있는 통로 지점 id */
   attach: string;
   /** 평면도에 표기가 없어 위치를 추정한 곳 — 답사 확인 대상 */
@@ -84,7 +91,7 @@ const FLOOR_1: Room[] = [
   { x:150, y:176, w: 20, h: 18, label:"🚻",         sub:"",             kind:"toilet",   floor:1, attach:"w1-core" },
   { x:307, y: 36, w: 44, h: 22, label:"초음파실",   sub:"🔊",           kind:"room", floor:1, placeIds:["smg-1f-us"],  attach:"w1-east" },
   { x:228, y: 60, w:123, h:141, label:"응급의료센터", sub:"🚨",         kind:"facility", floor:1, placeIds:["smg-1f-er"], attach:"w1-east" },
-  { x:228, y:204, w: 46, h: 22, label:"진료협력",   sub:"센터",         kind:"desk", floor:1, placeIds:["smg-1f-referral"], attach:"w1-esouth" },
+  { x:228, y:204, w: 46, h: 22, label:"진료협력",   sub:"센터",         fullName:"진료협력센터", kind:"desk", floor:1, placeIds:["smg-1f-referral"], attach:"w1-esouth" },
   { x:160, y:272, w: 48, h: 16, label:"정문출입구", sub:"🚪",           kind:"entrance", floor:1, placeIds:["smg-1f-entrance"], attach:"w1-gate" },
 
   // ⚠️ 아래 3곳은 공식 평면도에 표기가 없다. 위치는 추정이며 답사 확인 대상.
@@ -126,12 +133,12 @@ const FLOOR_2: Room[] = [
   { x: 86, y:202, w: 26, h: 34, label:"신경과",     sub:"", kind:"room", floor:2, placeIds:["smg-2f-neuro"], attach:"w2-wsouth" },
   { x: 86, y:246, w: 61, h: 34, label:"신경외과",   sub:"", kind:"room", floor:2, placeIds:["smg-2f-ns"],   attach:"w2-south" },
   { x:150, y:246, w: 84, h: 34, label:"내과",       sub:"내과 진료실", kind:"room", floor:2, placeIds:["smg-2f-im"], attach:"w2-south" },
-  { x:238, y:246, w: 62, h: 34, label:"정신건강",   sub:"의학과", kind:"room", floor:2, placeIds:["smg-2f-psy"], attach:"w2-esouth" },
+  { x:238, y:246, w: 62, h: 34, label:"정신건강",   sub:"의학과", fullName:"정신건강의학과", kind:"room", floor:2, placeIds:["smg-2f-psy"], attach:"w2-esouth" },
   { x:186, y: 18, w: 28, h: 76, label:"엘리베이터", sub:"🛗 6대", kind:"elevator", floor:2, attach:"w2-north" },
   { x:148, y: 64, w: 20, h: 31, label:"계단",       sub:"🚶", kind:"stairs", floor:2, attach:"w2-wnorth" },
   { x:148, y:143, w: 20, h: 33, label:"계단",       sub:"🚶", kind:"stairs", floor:2, attach:"w2-west" },
   { x:150, y:180, w: 20, h: 18, label:"🚻",         sub:"", kind:"toilet", floor:2, attach:"w2-core" },
-  { x:198, y:100, w: 26, h:100, label:"혈관",       sub:"센터", kind:"room", floor:2, placeIds:["smg-2f-vasc"], attach:"w2-east" },
+  { x:198, y:100, w: 26, h:100, label:"혈관",       sub:"센터", fullName:"혈관센터", kind:"room", floor:2, placeIds:["smg-2f-vasc"], attach:"w2-east" },
   { x:228, y: 61, w:123, h: 37, label:"비뇨의학과", sub:"", kind:"room", floor:2, placeIds:["smg-2f-uro"],  attach:"w2-enorth" },
   { x:228, y:100, w:123, h: 38, label:"정형외과",   sub:"", kind:"room", floor:2, placeIds:["smg-2f-ortho"], attach:"w2-east" },
   { x:228, y:140, w:123, h: 59, label:"하늘공원",   sub:"🌿 쉼터", kind:"waiting", floor:2, attach:"w2-east" },

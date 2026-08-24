@@ -15,13 +15,14 @@ import { PLACE_BY_ID } from "../data/places";
 import type { Task, NavStep } from "../types";
 
 /**
- * 환자가 앱을 켜는 지점 = 정문.
+ * 환자가 앱을 켜는 지점 = 원무과.
  *
- * 접수 창구로 잡으면 첫 단계가 "원무과 → 원무과"가 되어 안내가 비어버린다.
- * 정문에서 시작해야 첫 화면부터 "접수하는 곳으로 가세요"가 나온다.
- * (NFC 태그는 정문·키오스크 주변에 붙는다)
+ * 이 서비스는 **접수증을 손에 든 순간부터** 시작된다. 원무과에서 접수증을 받고
+ * 그 자리에서 찍는 것이 첫 동작이므로, "원무과로 가세요"를 안내할 이유가 없다.
+ * 첫 안내는 접수증에 적힌 첫 진료과로 향하는 길이다.
+ * (NFC 태그도 접수 창구 주변에 붙는다)
  */
-export const START_PLACE_ID = "smg-1f-entrance";
+export const START_PLACE_ID = "smg-1f-reception";
 
 export interface BuildResult {
   tasks: Task[];
@@ -86,7 +87,8 @@ export function buildTasks(
  */
 function stayStep(floor: number, label: string): NavStep {
   return {
-    instruction: `${label} 앞에서\n기다리세요`,
+    headline: label,
+    instruction: `${label} 앞에서 기다리세요`,
     detail: "이름을 부르면 들어가세요",
     dirIcon: "up",
     floor,

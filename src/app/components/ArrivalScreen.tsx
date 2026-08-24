@@ -27,7 +27,7 @@ export function ArrivalScreen({ task, isLast, onNext, onBack }: ArrivalScreenPro
     speak(spoken, { clip: arriveClip(task.id) });
   }, [spoken]); // eslint-disable-line
 
-  const handleReplayTTS = () => speak(spoken);
+  const handleReplayTTS = () => speak(spoken, { clip: arriveClip(task.id) });
 
   return (
     <div className="flex flex-col h-full bg-[#F2F4F7] p-6 justify-between select-none">

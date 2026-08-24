@@ -108,7 +108,7 @@ export function buildGraph(): Graph {
         x: c.x,
         y: c.y,
         kind: "room",
-        label: room.label,
+        label: room.fullName ?? room.label,
         vertical:
           room.kind === "elevator" ? "elevator" : room.kind === "stairs" ? "stairs" : undefined,
       });
@@ -327,7 +327,10 @@ function splitIntoLegs(segment: GraphNode[], destLabel: string, origin?: string)
   if (pts.length < 2) return [];
 
   const floor = pts[0].floor;
-  const skip = [destLabel, origin];
+  // 출발지만 제외한다. 목적지까지 빼면 "엘리베이터로 가세요" 구간에서
+  // 정작 엘리베이터가 랜드마크 후보에서 빠져 "여기까지 왔어요" 같은 말이 나온다.
+  const skip = [origin];
+  void destLabel;
 
   // 1) 꺾이는 지점을 먼저 전부 찾는다
   const breaks: Array<{ at: number; turn: "left" | "right"; landmark?: string }> = [];
@@ -426,7 +429,10 @@ export function toNavSteps(route: Route, destLabel: string): NavStep[] {
           const pivot = leg.points[leg.points.length - 1];
           const after = nextLeg.points[Math.min(1, nextLeg.points.length - 1)];
           steps.push({
+            // 화면은 단어만 — 방향은 큰 화살표가 이미 말해준다
+            headline: nextLeg.landmark ? `${nextLeg.landmark} 앞에서\n${word}` : `${word}으로`,
             instruction: `${li === 0 ? prefix : ""}${where}${word}${particleRo(word)} 도세요`,
+            checkpoint: nextLeg.landmark ? `${nextLeg.landmark} 앞` : undefined,
             dirIcon: nextLeg.turn,
             detail: `${target} 방향`,
             floor,
@@ -445,7 +451,9 @@ export function toNavSteps(route: Route, destLabel: string): NavStep[] {
         // 마지막 구간
         if (isFinal) {
           steps.push({
+            headline: target,
             instruction: `${legs.length === 1 ? prefix : ""}곧장 가면\n${target}입니다`,
+            checkpoint: target,
             dirIcon: "up",
             detail: `${target} 방향`,
             floor,
@@ -474,7 +482,9 @@ export function toNavSteps(route: Route, destLabel: string): NavStep[] {
       const tail = pendingTail;
       pendingTail = [];
       steps.push({
+        headline: `${b.floor}층`,
         instruction: `${means}${particleRo(means)}\n${b.floor}층에 가세요`,
+        checkpoint: `${b.floor}층`,
         detail: `${a.floor}층 → ${b.floor}층`,
         dirIcon: "elevator",
         floor: a.floor,

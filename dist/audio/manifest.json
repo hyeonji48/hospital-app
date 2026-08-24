@@ -1,6 +1,6 @@
 {
   "ext": "m4a",
-  "signature": "say:Yuna:160",
+  "signature": "say:Yuna:160:hq",
   "clips": [
     "arrive-1",
     "arrive-2",
@@ -8,9 +8,12 @@
     "arrive-4",
     "arrive-5",
     "arrive-6",
-    "arrive-7",
     "confirm",
+    "nav-0-0",
     "nav-0-1",
+    "nav-0-2",
+    "nav-0-3",
+    "nav-0-4",
     "nav-1-0",
     "nav-1-1",
     "nav-1-2",
@@ -20,21 +23,15 @@
     "nav-2-1",
     "nav-2-2",
     "nav-2-3",
-    "nav-2-4",
     "nav-3-0",
     "nav-3-1",
     "nav-3-2",
-    "nav-3-3",
     "nav-4-0",
     "nav-4-1",
     "nav-4-2",
+    "nav-4-3",
+    "nav-4-4",
     "nav-5-0",
-    "nav-5-1",
-    "nav-5-2",
-    "nav-5-3",
-    "nav-5-4",
-    "nav-6-0",
-    "nav-6-1",
-    "nav-0-0"
+    "nav-5-1"
   ]
 }

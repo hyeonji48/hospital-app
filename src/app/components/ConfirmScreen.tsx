@@ -44,7 +44,7 @@ export function ConfirmScreen({ tasks, source, onConfirm }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between py-2 shrink-0">
         <p className="text-2xl font-bold text-slate-800">접수증 확인</p>
-        <TTSReplayButton onClick={() => speak(spoken)} />
+        <TTSReplayButton onClick={() => speak(spoken, { clip: CONFIRM_CLIP })} />
       </div>
 
       <div className="flex-1 flex flex-col justify-center py-4">

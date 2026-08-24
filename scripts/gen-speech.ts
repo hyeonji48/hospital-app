@@ -82,17 +82,25 @@ function have(cmd: string): boolean {
   }
 }
 
-/** 무손실 원본 → m4a. 파일 수십 개면 용량 차이가 크다 */
+/**
+ * 무손실 원본 → m4a.
+ *
+ * 44.1kHz / 128kbps 로 굽는다. 예전에는 22kHz / 64kbps 였는데, 브라우저가
+ * 그 자리에서 합성한 소리(무압축)와 나란히 들어보면 확연히 탁했다.
+ * 음성 클립 서른 개라도 44.1kHz/128k 로 전체 3MB 남짓이라 용량은 문제가 아니다.
+ */
 function compress(src: string, m4a: string): boolean {
   try {
     if (have("afconvert")) {
-      execFileSync("afconvert", ["-f", "m4af", "-d", "aac", "-b", "64000", src, m4a], {
+      execFileSync("afconvert", ["-f", "m4af", "-d", "aac@44100", "-b", "128000", src, m4a], {
         stdio: "ignore",
       });
       return true;
     }
     if (have("ffmpeg")) {
-      execFileSync("ffmpeg", ["-y", "-i", src, "-b:a", "64k", m4a], { stdio: "ignore" });
+      execFileSync("ffmpeg", ["-y", "-i", src, "-ar", "44100", "-b:a", "128k", m4a], {
+        stdio: "ignore",
+      });
       return true;
     }
   } catch {
@@ -165,7 +173,7 @@ async function main() {
 
   // 지금 설정으로 만들면 어떤 목소리가 되는지
   const signature =
-    ENGINE === "say" ? `say:${SAY_VOICE}:${SAY_RATE}` : `gemini:${GEMINI_MODEL}:${GEMINI_VOICE}`;
+    ENGINE === "say" ? `say:${SAY_VOICE}:${SAY_RATE}:hq` : `gemini:${GEMINI_MODEL}:${GEMINI_VOICE}:hq`;
 
   let prev: { signature?: string } = {};
   try {

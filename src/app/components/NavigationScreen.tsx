@@ -59,6 +59,8 @@ function MapFullScreen({ step, onClose }: { step: NavStep; onClose: () => void }
 function ElevatorPanel({ step, onDone }: { step: NavStep; onDone: () => void }) {
   const from = step.elevatorFrom ?? 1;
   const to = step.elevatorTo ?? 1;
+  // 버튼이 "무엇을 확인하는 것인지" 말해준다. 그냥 '완료'는 뭐가 완료인지 알 수 없다.
+  const label = `${to}층에 내렸어요`;
 
   return (
     <div className="flex flex-col h-full justify-between select-none">
@@ -96,7 +98,7 @@ function ElevatorPanel({ step, onDone }: { step: NavStep; onDone: () => void }) 
           className="w-full rounded-[1.75rem] py-6 text-3xl font-bold text-white bg-[#2F6EFF] active:bg-[#1554D4] transition-colors shadow-lg shadow-[#2F6EFF]/15"
           whileTap={{ scale: 0.97 }}
         >
-          완료
+          {label}
         </motion.button>
       </div>
     </div>
@@ -124,20 +126,28 @@ export function NavigationScreen({ tasks, currentTaskIndex, onArrived, onBack }:
   const seed = navSeed(currentTaskIndex, stepIndex);
   const spoken = currentStep.isElevator
     ? elevatorPhrase(currentStep.elevatorFrom ?? 1, currentStep.elevatorTo ?? 1, seed)
-    : navPhrase(currentStep.instruction, seed, isLastStep);
+    : navPhrase(currentStep.instruction, seed, isLastStep, currentStep.checkpoint);
 
   useEffect(() => {
     speak(spoken, { clip: navClip(currentTaskIndex, stepIndex) });
   }, [spoken, currentTaskIndex, stepIndex]); // eslint-disable-line
 
+  // 다시 듣기도 **같은 음성 파일**을 재생한다.
+  // 예전에는 파일 없이 불러서 브라우저가 제 나름의 목소리로 합성했고,
+  // 그래서 자동 안내와 다시 듣기의 목소리가 서로 달랐다.
   const handleReplayTTS = () => {
-    // 다시 듣기는 군더더기 없이 지시문만 읽는다
-    speak(
-      currentStep.isElevator
-        ? `엘리베이터로 ${currentStep.elevatorTo ?? 1}층`
-        : currentStep.instruction.replace(/\n/g, " "),
-    );
+    speak(spoken, { clip: navClip(currentTaskIndex, stepIndex) });
   };
+
+  /**
+   * 버튼 문구 — 이 화면에서 **어디까지 가면 누르는지**를 말한다.
+   * "완료"만으로는 무엇이 완료인지 알 수 없어 어르신이 그냥 눌러 넘기게 된다.
+   */
+  const doneLabel = currentStep.checkpoint
+    ? isLastStep
+      ? `${currentStep.checkpoint} 도착`
+      : `${currentStep.checkpoint}에 왔어요`
+    : "완료";
 
   const handleNextStep = () => {
     setShowMap(false);
@@ -221,7 +231,7 @@ export function NavigationScreen({ tasks, currentTaskIndex, onArrived, onBack }:
 
                   {/* Main instruction */}
                   <p className="text-3xl font-extrabold text-slate-900 leading-snug px-2 whitespace-pre-line">
-                    {currentStep.instruction}
+                    {currentStep.headline}
                   </p>
 
                   {/* Map button */}
@@ -245,7 +255,7 @@ export function NavigationScreen({ tasks, currentTaskIndex, onArrived, onBack }:
                   className="w-full rounded-[1.75rem] py-6 text-3xl font-bold text-white bg-[#2F6EFF] active:bg-[#1554D4] transition-colors shadow-lg shadow-[#2F6EFF]/15"
                   whileTap={{ scale: 0.97 }}
                 >
-                  완료
+                  {doneLabel}
                 </motion.button>
               </div>
             </motion.div>
