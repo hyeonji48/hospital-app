@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Task } from "../types";
 import { ChevronLeft } from "lucide-react";
 import { useTTS } from "../hooks/useTTS";
+import { arrivalPhrase, arriveClip } from "../lib/phrases";
 import { TTSReplayButton } from "./ui/TTSReplayButton";
 
 interface ArrivalScreenProps {
@@ -15,13 +16,18 @@ interface ArrivalScreenProps {
 export function ArrivalScreen({ task, isLast, onNext, onBack }: ArrivalScreenProps) {
   const speak = useTTS();
 
-  useEffect(() => {
-    speak(`${task.location}에 무사히 잘 찾아오셨습니다! 여기까지 오시느라 고생 많으셨어요. 이제 화면 아래의 버튼을 천천히 눌러주세요.`);
-  }, [speak, task]);
+  const spoken = arrivalPhrase(
+    task.arrivalTitle.replace(" 도착", ""),
+    task.arrivalDetail,
+    task.doctor,
+    task.id,
+  );
 
-  const handleReplayTTS = () => {
-    speak(`${task.arrivalTitle}`);
-  };
+  useEffect(() => {
+    speak(spoken, { clip: arriveClip(task.id) });
+  }, [spoken]); // eslint-disable-line
+
+  const handleReplayTTS = () => speak(spoken);
 
   return (
     <div className="flex flex-col h-full bg-[#F2F4F7] p-6 justify-between select-none">
@@ -50,6 +56,13 @@ export function ArrivalScreen({ task, isLast, onNext, onBack }: ArrivalScreenPro
           <p className="text-4xl font-extrabold text-slate-900 leading-snug whitespace-pre-line">
             {task.arrivalTitle}
           </p>
+
+          {/* 담당 의료진 — 접수증에 적혀 있을 때만 */}
+          {task.doctor && (
+            <p className="text-3xl font-bold text-[#2F6EFF] leading-snug break-keep">
+              {task.doctor}님
+            </p>
+          )}
 
           {/* Divider */}
           <div className="w-12 h-1 bg-[#2F6EFF] rounded-full" />

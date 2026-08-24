@@ -1,100 +1,34 @@
 import { useEffect, useRef, useState } from "react";
+import type React from "react";
 import { Plus, Minus } from "lucide-react";
 import { NavStep } from "../types";
 
-// ─── Room type ───────────────────────────────────────────────
-interface Room {
-  x: number; y: number; w: number; h: number;
-  label: string; sub?: string;
-  isElevator?: boolean; isStairs?: boolean; isNurse?: boolean;
-  isWaiting?: boolean; isLobby?: boolean; isToilet?: boolean;
-  isSpecial?: boolean; isUrgent?: boolean;
-}
+// ─── 도면 데이터 ─────────────────────────────────────────────
+// 가상 병원 하드코딩을 걷어내고 부천성모 성모관 실제 배치를 쓴다.
+// 좌표는 아직 가배치이며, 답사 후 floorPlan.ts 만 고치면 여기는 안 바뀐다.
 
-// ─── Floor definitions ───────────────────────────────────────
-const FLOOR_1_ROOMS: Room[] = [
-  // Top row (north)
-  { x:5,   y:5,  w:88, h:86, label:"약국",        sub:"💊 처방전" },
-  { x:98,  y:5,  w:78, h:86, label:"처방전접수",   sub:"📋" },
-  { x:181, y:5,  w:68, h:86, label:"안내데스크",   sub:"ℹ️" },
-  { x:254, y:5,  w:52, h:86, label:"원무과",       sub:"📝" },
-  { x:311, y:5,  w:44, h:86, label:"화장실",       sub:"🚻", isToilet: true },
-  // Bottom row (south)
-  { x:5,   y:116, w:178, h:119, label:"1층 대기 로비", sub:"💺", isLobby: true },
-  { x:188, y:116, w:68,  h:57,  label:"편의점",        sub:"🛒", isSpecial: true },
-  { x:261, y:116, w:94,  h:57,  label:"커피숍",        sub:"☕", isSpecial: true },
-  { x:188, y:177, w:48,  h:58,  label:"엘리베이터",    sub:"🛗", isElevator: true },
-  { x:241, y:177, w:40,  h:58,  label:"계단",          sub:"🚶", isStairs: true },
-  { x:286, y:177, w:69,  h:58,  label:"응급센터",      sub:"🚨", isUrgent: true },
-];
-
-const FLOOR_2_ROOMS: Room[] = [
-  // Top row
-  { x:5,   y:5, w:45, h:91, label:"엘리베이터", sub:"🛗", isElevator: true },
-  { x:55,  y:5, w:35, h:91, label:"계단",       sub:"🚶", isStairs: true },
-  { x:95,  y:5, w:65, h:91, label:"간호사실",   sub:"👩‍⚕️",  isNurse: true },
-  { x:165, y:5, w:48, h:91, label:"201",        sub:"재활의학과" },
-  { x:218, y:5, w:48, h:91, label:"203",        sub:"정형외과" },
-  { x:271, y:5, w:48, h:91, label:"205",        sub:"김멋사 교수" },
-  { x:324, y:5, w:31, h:91, label:"207",        sub:"정형외과" },
-  // Bottom row
-  { x:5,   y:124, w:85,  h:111, label:"대기실",   sub:"💺", isWaiting: true },
-  { x:95,  y:124, w:65,  h:111, label:"처치실",   sub:"🩺" },
-  { x:165, y:124, w:48,  h:111, label:"202",      sub:"재활의학과" },
-  { x:218, y:124, w:48,  h:111, label:"204",      sub:"정형외과" },
-  { x:271, y:124, w:48,  h:111, label:"206",      sub:"정형외과" },
-  { x:324, y:124, w:31,  h:111, label:"208",      sub:"정형외과" },
-];
-
-const FLOOR_3_ROOMS: Room[] = [
-  // Top row
-  { x:5,   y:5, w:45, h:91, label:"엘리베이터", sub:"🛗", isElevator: true },
-  { x:55,  y:5, w:35, h:91, label:"계단",       sub:"🚶", isStairs: true },
-  { x:95,  y:5, w:65, h:91, label:"간호사실",   sub:"👩‍⚕️",  isNurse: true },
-  { x:165, y:5, w:48, h:91, label:"308",        sub:"신경외과" },
-  { x:218, y:5, w:48, h:91, label:"310",        sub:"신경외과" },
-  { x:271, y:5, w:48, h:91, label:"312",        sub:"김멋사 교수" },
-  { x:324, y:5, w:31, h:91, label:"314",        sub:"신경외과" },
-  // Bottom row
-  { x:5,   y:124, w:85,  h:111, label:"대기실",   sub:"💺", isWaiting: true },
-  { x:95,  y:124, w:65,  h:111, label:"처치실",   sub:"🩺" },
-  { x:165, y:124, w:48,  h:111, label:"307",      sub:"신경외과" },
-  { x:218, y:124, w:48,  h:111, label:"309",      sub:"내과" },
-  { x:271, y:124, w:48,  h:111, label:"311",      sub:"신경외과" },
-  { x:324, y:124, w:31,  h:111, label:"313",      sub:"신경외과" },
-];
-
-const FLOOR_4_ROOMS: Room[] = [
-  // Top row
-  { x:5,   y:5, w:45, h:91, label:"엘리베이터", sub:"🛗", isElevator: true },
-  { x:55,  y:5, w:35, h:91, label:"계단",       sub:"🚶", isStairs: true },
-  { x:95,  y:5, w:65, h:91, label:"간호사실",   sub:"👩‍⚕️",  isNurse: true },
-  { x:165, y:5, w:95, h:91, label:"CT 대기실",  sub:"💺 번호대기", isWaiting: true },
-  { x:265, y:5, w:90, h:91, label:"MRI실",      sub:"🔬 MRI 촬영" },
-  // Bottom row
-  { x:5,   y:124, w:90,  h:111, label:"대기실",    sub:"💺", isWaiting: true },
-  { x:100, y:124, w:65,  h:111, label:"판독실",    sub:"🔍" },
-  { x:170, y:124, w:90,  h:111, label:"CT실",      sub:"CT 촬영" },
-  { x:265, y:124, w:90,  h:111, label:"엑스레이실", sub:"X-Ray" },
-];
+import { FLOORS, FLOOR_LABELS, WAYPOINTS, LINKS, type Room } from "../data/floorPlan";
 
 function getFloorRooms(floor: number): Room[] {
-  if (floor === 1) return FLOOR_1_ROOMS;
-  if (floor === 2) return FLOOR_2_ROOMS;
-  if (floor === 3) return FLOOR_3_ROOMS;
-  return FLOOR_4_ROOMS;
+  // 없는 층을 요청받으면 빈 도면을 돌려준다. 예전 코드처럼 엉뚱한 층을
+  // 그려주는 것보다 아무것도 안 그리는 편이 디버깅 가능하다.
+  return FLOORS[floor] ?? [];
 }
 
 function getFloorLabel(floor: number): string {
-  if (floor === 1) return "1층 외래·로비";
-  if (floor === 2) return "2층 정형외과";
-  if (floor === 3) return "3층 신경외과";
-  return "4층 영상의학과";
+  return FLOOR_LABELS[floor] ?? `${floor}층`;
 }
 
-// Corridor definition per floor
-function getCorridorY(floor: number): { y: number; h: number } {
-  return floor === 1 ? { y: 94, h: 18 } : { y: 100, h: 20 };
+/** 통로를 실선으로 그리기 위한 선분 목록 */
+function getCorridorSegments(floor: number): Array<[number, number, number, number]> {
+  const wps = new Map((WAYPOINTS[floor] ?? []).map((w) => [w.id, w]));
+  const out: Array<[number, number, number, number]> = [];
+  for (const [a, b] of LINKS[floor] ?? []) {
+    const na = wps.get(a);
+    const nb = wps.get(b);
+    if (na && nb) out.push([na.x, na.y, nb.x, nb.y]);
+  }
+  return out;
 }
 
 // ─── Main component ──────────────────────────────────────────
@@ -107,7 +41,7 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
   const pathRef = useRef<SVGPathElement>(null);
 
   const rooms = getFloorRooms(step.floor);
-  const { y: corridorY, h: corridorH } = getCorridorY(step.floor);
+  const corridorSegments = getCorridorSegments(step.floor);
   const floorLabel = getFloorLabel(step.floor);
 
   const pathD =
@@ -134,12 +68,42 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
   const ux = step.userPos[0];
   const uy = step.userPos[1];
 
-  // Manual zoom multiplier state (resets back to 1.0 when step changes)
+  // 수동 확대 배율과 손으로 민 이동량. 단계가 바뀌면 원위치로 돌아간다.
   const [zoomMultiplier, setZoomMultiplier] = useState(1.0);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     setZoomMultiplier(1.0);
+    setPan({ x: 0, y: 0 });
   }, [step]);
+
+  // 지도를 손으로 밀어서 볼 수 있게 한다.
+  // 자동 확대가 현재위치와 목적지에만 맞춰지다 보니 주변이 화면 밖으로 나간다.
+  // 어르신이 "여기가 어디쯤인지" 확인하려면 둘러볼 수 있어야 한다.
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    dragRef.current = { x: e.clientX, y: e.clientY };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const start = dragRef.current;
+    if (!start) return;
+    // 화면 픽셀 → SVG 좌표로 환산해야 손가락과 지도가 같이 움직인다
+    const rect = e.currentTarget.getBoundingClientRect();
+    const kx = rect.width ? (fullScreen ? 600 : 240) / rect.width : 1;
+    const ky = rect.height ? (fullScreen ? 900 : 360) / rect.height : 1;
+    setPan((prev) => ({
+      x: prev.x + (e.clientX - start.x) * kx,
+      y: prev.y + (e.clientY - start.y) * ky,
+    }));
+    dragRef.current = { x: e.clientX, y: e.clientY };
+  };
+  const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    dragRef.current = null;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  };
 
   // 2. Active GPS Translation, Rotation, and Dynamic Zoom scaling
   const rad = (rotationAngle * Math.PI) / 180;
@@ -161,15 +125,22 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
   // Screen layout configuration:
   const vw = fullScreen ? 600 : 240;
   const vh = fullScreen ? 900 : 360;
-  const tx = vw / 2;
-  const ty = fullScreen ? vh * 0.75 : vh - 30;
+  // 현재위치를 화면 정중앙에 고정하지 않는다.
+  // 고정하면 진행 방향 쪽 여백만 쓰게 되어 지도가 필요 이상으로 작아진다.
+  // 현재위치와 목적지의 가운데를 화면 중앙에 두면 같은 화면에 더 크게 담긴다.
+  const midRx = (Math.min(0, rx) + Math.max(0, rx)) / 2;
+  const midRy = (Math.min(0, ry) + Math.max(0, ry)) / 2;
 
-  let maxAllowedScale = fullScreen ? 3.5 : 2.0;
-  const minAllowedScale = fullScreen ? 0.5 : 0.35;
+  const tx = vw / 2 + pan.x;
+  const ty = (fullScreen ? vh * 0.52 : vh * 0.55) + pan.y;
 
-  const halfW = vw / 2 - 30;
-  const topBudget = ty - 60;
-  const bottomBudget = vh - ty - 20;
+  let maxAllowedScale = fullScreen ? 6.0 : 3.2;
+  const minAllowedScale = fullScreen ? 0.8 : 0.5;
+
+  // 여백을 줄여 지도를 더 크게 — 12번 피드백("너무 작아 보임")
+  const halfW = vw / 2 - 14;
+  const topBudget = vh * 0.5 - 20;
+  const bottomBudget = vh * 0.5 - 20;
 
   if (minRx < 0) {
     const sVal = -halfW / minRx;
@@ -188,13 +159,22 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
     if (sVal < maxAllowedScale) maxAllowedScale = sVal;
   }
 
+  // 구간이 짧으면 자동 맞춤 배율이 과하게 올라가 주변 방 이름이 다 잘린다.
+  // "적어도 도면의 이만큼은 보이게" 라는 상한을 따로 둔다 —
+  // 어르신이 현재 위치를 주변 지형지물과 함께 파악할 수 있어야 하기 때문.
+  const MIN_VISIBLE_SPAN = 165;
+  const spanCap = vw / MIN_VISIBLE_SPAN;
+
   // Base optimal fit scale
-  const baseScale = Math.max(minAllowedScale, maxAllowedScale);
+  const baseScale = Math.min(spanCap, Math.max(minAllowedScale, maxAllowedScale));
 
   // Apply manual zoom multiplier
   const scale = baseScale * zoomMultiplier;
+  // 현재위치·목적지의 중점을 화면 중앙으로 끌어오는 보정
+  const centerShiftX = -midRx * scale;
+  const centerShiftY = -midRy * scale;
 
-  const navTransform = `translate(${tx}, ${ty}) scale(${scale}) rotate(${rotationAngle}) translate(${-ux}, ${-uy})`;
+  const navTransform = `translate(${tx + centerShiftX}, ${ty + centerShiftY}) scale(${scale}) rotate(${rotationAngle}) translate(${-ux}, ${-uy})`;
 
   const handleZoomIn = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -223,7 +203,7 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
       {/* Floor banner */}
       <div className="bg-[#2F6EFF] text-white px-4 py-2.5 flex items-center justify-between shrink-0">
         <span className="text-base font-medium">🗺️ {floorLabel}</span>
-        <span className="bg-white/20 rounded-lg px-2.5 py-0.5 text-sm font-bold">{step.floor}층</span>
+        <span className="bg-white/20 rounded-lg px-2.5 py-0.5 text-sm font-bold">{step.floor}F</span>
       </div>
 
       {/* Location / Destination Guide Bar */}
@@ -233,14 +213,39 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
           <span className="text-slate-700 text-base font-bold">현재 위치</span>
         </div>
         <span className="text-slate-300 font-light select-none">|</span>
+        {/* 회전 화면에서는 목적지 대신 "여기서 도세요"를 안내한다 */}
         <div className="flex items-center gap-2.5">
-          <span className="w-4 h-4 rounded-full bg-[#DC2626] border border-white shadow-sm flex items-center justify-center flex-shrink-0 text-[8px] text-white font-extrabold select-none">★</span>
-          <span className="text-slate-900 text-base font-extrabold">목적지</span>
+          {step.turnAt ? (
+            <>
+              <span className="w-4 h-4 rounded-full bg-[#F59E0B] border border-white shadow-sm flex items-center justify-center flex-shrink-0 text-[9px] text-white font-extrabold select-none">
+                ➜
+              </span>
+              <span className="text-slate-900 text-base font-extrabold">
+                {step.turnDir === "left" ? "왼쪽으로" : "오른쪽으로"}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="w-4 h-4 rounded-full bg-[#DC2626] border border-white shadow-sm flex items-center justify-center flex-shrink-0 text-[8px] text-white font-extrabold select-none">★</span>
+              <span className="text-slate-900 text-base font-extrabold">목적지</span>
+            </>
+          )}
         </div>
       </div>
 
       <div className="p-2 bg-[#F8F9FC] flex-1 flex items-center justify-center overflow-hidden min-h-0">
-        <svg viewBox={`0 0 ${vw} ${vh}`} className={fullScreen ? "w-full h-full" : "w-full h-[390px] max-sm:h-[42vh]"} preserveAspectRatio="xMidYMid meet">
+        <svg
+          viewBox={`0 0 ${vw} ${vh}`}
+          className={
+            (fullScreen ? "w-full h-full" : "w-full h-[390px] max-sm:h-[42vh]") +
+            " touch-none cursor-grab active:cursor-grabbing"
+          }
+          preserveAspectRatio="xMidYMid meet"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+        >
           {/* Group that undergoes navigation transform (rotation, panning, zooming) */}
           <g transform={navTransform}>
             {/* Background */}
@@ -248,11 +253,14 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
             {/* Building outer wall */}
             <rect x="2" y="2" width="356" height="236" fill="#ffffff" stroke="#D1D5E8" strokeWidth="2" rx="5" />
 
-            {/* Corridor */}
-            <rect x={2} y={corridorY} width={356} height={corridorH} fill="#EBEcF4" stroke="#E0E3F0" strokeWidth="0.5" />
-            <text x="180" y={corridorY + corridorH / 2 + 4} textAnchor="middle" fontSize="9" fill="#8A94CD" letterSpacing="4">
-              — — — 복도 — — —
-            </text>
+            {/* 통로 — 실제 평면도의 이동 가능한 선 */}
+            {corridorSegments.map(([x1, y1, x2, y2], i) => (
+              <line
+                key={`corr-${i}`}
+                x1={x1} y1={y1} x2={x2} y2={y2}
+                stroke="#E0E3F0" strokeWidth="9" strokeLinecap="round"
+              />
+            ))}
 
             {/* Rooms */}
             {rooms.map((room, i) => {
@@ -261,14 +269,13 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
               let stroke = "#D1D5E8";
               let strokeW = 0.8;
 
-              if (isTarget)          { fill = "#EAF0FF"; stroke = "#2F6EFF"; strokeW = 2; }
-              else if (room.isElevator) { fill = "#FFFBEB"; stroke = "#FCD34D"; }
-              else if (room.isStairs)   { fill = "#F0FDF4"; stroke = "#86EFAC"; }
-              else if (room.isNurse)    { fill = "#FFF1F2"; stroke = "#FDA4AF"; }
-              else if (room.isWaiting || room.isLobby) { fill = "#F9FAFB"; stroke = "#D1D5DB"; }
-              else if (room.isToilet)   { fill = "#F5F3FF"; stroke = "#C4B5FD"; }
-              else if (room.isUrgent)   { fill = "#FFF5F5"; stroke = "#FCA5A5"; }
-              else if (room.isSpecial)  { fill = "#FEFCE8"; stroke = "#FDE68A"; }
+              if (isTarget)                      { fill = "#EAF0FF"; stroke = "#2F6EFF"; strokeW = 2; }
+              else if (room.kind === "elevator") { fill = "#FFFBEB"; stroke = "#FCD34D"; }
+              else if (room.kind === "stairs")   { fill = "#F0FDF4"; stroke = "#86EFAC"; }
+              else if (room.kind === "desk")     { fill = "#FFF1F2"; stroke = "#FDA4AF"; }
+              else if (room.kind === "waiting")  { fill = "#F9FAFB"; stroke = "#D1D5DB"; }
+              else if (room.kind === "entrance") { fill = "#F5F3FF"; stroke = "#C4B5FD"; }
+              else if (room.kind === "facility") { fill = "#FFF5F5"; stroke = "#FCA5A5"; }
 
               const cx = room.x + room.w / 2;
               const cy = room.y + room.h / 2;
@@ -319,7 +326,7 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
                     <text x={cx} y={cy - (hasSubLabel ? (isTarget || isNearUserOrDest ? 9 : 8) : 0)} textAnchor="middle"
                       fontSize={textFontSize}
                       fontWeight="bold"
-                      fill={isTarget ? "#1E3A8A" : (room.isElevator ? "#92400E" : room.isNurse ? "#BE123C" : "#0F172A")}>
+                      fill={isTarget ? "#1E3A8A" : room.kind === "elevator" ? "#92400E" : room.kind === "desk" ? "#BE123C" : "#0F172A"}>
                       {room.label}
                     </text>
                     {hasSubLabel && (
@@ -336,7 +343,7 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
                   {isTarget && (
                     <rect
                       x={room.x + room.w / 2 - 5}
-                      y={step.floor === 1 ? room.y + room.h - 2 : room.y + room.h - 2}
+                      y={room.y + room.h - 2}
                       width={10} height={4}
                       fill="#2F6EFF" rx="1"
                     />
@@ -379,8 +386,40 @@ export function HospitalFloorMap({ step, fullScreen = false }: Props) {
               <circle cx={step.userPos[0]} cy={step.userPos[1]} r="2.5" fill="white" />
             </g>
 
+            {/* 회전 표시 — "왼쪽으로 도세요"만으로는 어느 쪽이 왼쪽인지 헷갈린다.
+                꺾는 자리에 꺾은 뒤 갈 방향을 주황 화살표로 그린다.
+                파란 경로선과 다른 색이라 "여기서 이 방향" 이 한눈에 보인다. */}
+            {step.turnAt && step.turnHeading && (
+              <g
+                transform={`translate(${step.turnAt[0]},${step.turnAt[1]}) rotate(${
+                  (Math.atan2(step.turnHeading[1], step.turnHeading[0]) * 180) / Math.PI
+                })`}
+              >
+                <circle r="11" fill="#F59E0B" opacity="0.18">
+                  <animate attributeName="r" values="9;14;9" dur="1.4s" repeatCount="indefinite" />
+                </circle>
+                {/* 오른쪽(+x)을 향하는 화살표. 위 rotate 로 실제 방향에 맞춘다 */}
+                <path
+                  d="M -2 0 L 9 0 M 4 -4.5 L 9 0 L 4 4.5"
+                  fill="none"
+                  stroke="#F59E0B"
+                  strokeWidth="3.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M -2 0 L 9 0 M 4 -4.5 L 9 0 L 4 4.5"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="1.1"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </g>
+            )}
+
             {/* Destination marker - Counter-rotated so the star stays upright! */}
-            {step.pathPoints.length > 0 && (
+            {step.pathPoints.length > 0 && !step.turnAt && (
               <g transform={`translate(${step.destPos[0]},${step.destPos[1]}) rotate(${-rotationAngle})`}>
                 <circle cy="0" r="9.5" fill="#DC2626" stroke="white" strokeWidth="2" className="shadow-sm">
                   <animate attributeName="r" values="7.5;11.5;7.5" dur="1.4s" repeatCount="indefinite" />

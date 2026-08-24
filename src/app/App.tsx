@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { CameraView } from "./components/CameraView";
 import { LoadingView } from "./components/LoadingView";
@@ -6,9 +6,17 @@ import { NavigationScreen } from "./components/NavigationScreen";
 import { ArrivalScreen } from "./components/ArrivalScreen";
 import { CompleteView } from "./components/CompleteView";
 import { ConfirmScreen } from "./components/ConfirmScreen";
-import { TASKS } from "./types";
+import { ModeSelect, type AppMode } from "./components/ModeSelect";
+import type { Task } from "./types";
+import {
+  transformNotice,
+  type ImagePayload,
+  type TransformSource,
+} from "./lib/noticeTransform";
+import { buildTasks } from "./lib/buildTasks";
+import { DEMO_NOTICE } from "./data/noticeFixtures";
 
-type Phase = "camera" | "loading" | "confirm" | "navigating" | "arrived" | "complete";
+type Phase = "intro" | "camera" | "loading" | "confirm" | "navigating" | "arrived" | "complete";
 
 interface HistoryEntry {
   phase: Phase;
@@ -16,25 +24,18 @@ interface HistoryEntry {
 }
 
 export default function App() {
-  const [phase, setPhase] = useState<Phase>("camera");
+  const [phase, setPhase] = useState<Phase>("intro");
+  /**
+   * demo: 접수증을 찍는 시늉만 하고 저장된 결과를 쓴다 (심사장 기본값).
+   * live: 실제 사진을 AI에 보낸다.
+   * 두 모드는 데이터 출처만 다르고 이후 화면·경로 코드는 완전히 동일하다.
+   */
+  const [mode, setMode] = useState<AppMode>("demo");
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
+  /** 접수증에서 뽑아낸 오늘의 일정. 앱을 켠 시점에는 비어 있다 */
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [source, setSource] = useState<TransformSource>("cache");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [time, setTime] = useState("");
-
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      let hours = now.getHours();
-      const minutes = String(now.getMinutes()).padStart(2, "0");
-      const ampm = hours >= 12 ? "오후" : "오전";
-      hours = hours % 12;
-      hours = hours ? hours : 12; // 0 should be 12
-      setTime(`${ampm} ${hours}:${minutes}`);
-    };
-    updateClock();
-    const interval = setInterval(updateClock, 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Push the current state onto history before changing phase
   const pushAndNavigate = useCallback(
@@ -59,16 +60,46 @@ export default function App() {
     });
   }, []);
 
-  const handleScan = () => {
-    pushAndNavigate("loading");
-    setTimeout(() => {
-      // Replace "loading" in-place → push confirm on top
-      setHistory((prev) => [...prev, { phase: "loading", taskIndex: currentTaskIndex }]);
+  /**
+   * 접수증 촬영 → AI 변환 → 경로 생성.
+   *
+   * image 가 null 이면(카메라 실패 등) 시연용 안내문 텍스트로 대체한다.
+   * transformNotice 안에 캐시·API·폴백 3단이 들어 있어 여기서는 실패를 걱정하지 않는다.
+   */
+  const handleScan = useCallback(
+    async (image: ImagePayload | null) => {
+      setHistory((prev) => [...prev, { phase: "camera", taskIndex: 0 }]);
+      setPhase("loading");
+
+      // 시연 모드는 사진을 보내지 않는다 — 네트워크·API 한도에 노출되지 않는다.
+      // 실제 모드는 찍은 사진을 보내고, 실패하면 같은 캐시가 받아준다.
+      const result =
+        mode === "demo" || !image
+          ? await transformNotice({ notice: DEMO_NOTICE })
+          : await transformNotice({ image });
+      const { tasks: built, skipped } = buildTasks(result.steps);
+
+      if (skipped.length > 0) {
+        // 경로를 못 만든 단계는 화면에서 빠진다. 조용히 사라지면 원인을 못 찾으므로 남긴다.
+        console.warn("[동행온] 경로를 만들지 못한 단계:", skipped);
+      }
+
+      setTasks(built);
+      setSource(result.source);
+      setCurrentTaskIndex(0);
+      setHistory((prev) => [...prev, { phase: "loading", taskIndex: 0 }]);
       setPhase("confirm");
-    }, 3600);
-  };
+    },
+    [mode],
+  );
 
   const handleStartNavigation = () => {
+    // 읽기에 실패해 일정이 비었으면 다시 촬영으로 되돌린다
+    if (tasks.length === 0) {
+      setPhase("camera");
+      setHistory([]);
+      return;
+    }
     pushAndNavigate("navigating");
   };
 
@@ -77,7 +108,7 @@ export default function App() {
   };
 
   const handleNext = () => {
-    if (currentTaskIndex < TASKS.length - 1) {
+    if (currentTaskIndex < tasks.length - 1) {
       pushAndNavigate("navigating", currentTaskIndex + 1);
     } else {
       pushAndNavigate("complete");
@@ -86,8 +117,15 @@ export default function App() {
 
   const handleRestart = () => {
     setCurrentTaskIndex(0);
-    setPhase("camera");
+    setTasks([]);
+    setPhase("intro");
     setHistory([]);
+  };
+
+  const handleSelectMode = (m: AppMode) => {
+    setMode(m);
+    setHistory([{ phase: "intro", taskIndex: 0 }]);
+    setPhase("camera");
   };
 
   return (
@@ -95,34 +133,22 @@ export default function App() {
       {/* clean floating smartphone screen */}
       <div className="relative w-[412px] h-[915px] rounded-[2.5rem] bg-[#F2F4F7] shadow-[0_20px_50px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col max-sm:w-full max-sm:h-screen max-sm:rounded-none">
         
-        {/* Status Bar */}
-        <div className="h-10 px-8 pt-3.5 flex items-center justify-between text-base font-semibold text-slate-800 z-40 shrink-0 bg-transparent select-none max-sm:px-6">
-          <span className="tracking-tight">{time || "오후 3:41"}</span>
-          <div className="flex items-center gap-2">
-            {/* Cellular signal bars */}
-            <div className="flex items-end gap-[2px] h-3.5">
-              <span className="w-[3px] h-[5px] bg-slate-800 rounded-[0.5px]" />
-              <span className="w-[3px] h-[7px] bg-slate-800 rounded-[0.5px]" />
-              <span className="w-[3px] h-[9px] bg-slate-800 rounded-[0.5px]" />
-              <span className="w-[3px] h-[11px] bg-slate-800 rounded-[0.5px]" />
-            </div>
-            
-            {/* Wi-Fi Icon (Lucide-like SVG) */}
-            <svg className="w-4 h-4 fill-current text-slate-800" viewBox="0 0 24 24">
-              <path d="M12 21a2 2 0 1 1-2-2 2 2 0 0 1 2 2zm0-5a5 5 0 0 0-3.54 1.46.75.75 0 1 0 1.06 1.06 3.5 3.5 0 0 1 4.96 0 .75.75 0 1 0 1.06-1.06A5 5 0 0 0 12 16zm0-5a10 10 0 0 0-7.07 2.93.75.75 0 0 0 1.06 1.06 8.5 8.5 0 0 1 12.02 0 .75.75 0 0 0 1.06-1.06A10 10 0 0 0 12 11zm0-5a15 15 0 0 0-10.6 4.4.75.75 0 0 0 1.06 1.06 13.5 13.5 0 0 1 19.08 0 .75.75 0 0 0 1.06-1.06A15 15 0 0 0 12 6z"/>
-            </svg>
-            
-            {/* Battery percentage */}
-            <span className="text-[13px] font-bold text-slate-800">96%</span>
-            <div className="w-6 h-3 rounded-[3px] border border-slate-800 p-[1px] flex items-center">
-              <div className="w-[85%] h-full bg-slate-800 rounded-[1px]" />
-            </div>
-          </div>
-        </div>
-
         {/* Content View Area */}
         <div className="flex-1 relative overflow-hidden flex flex-col bg-[#F2F4F7]">
           <AnimatePresence mode="wait">
+            {phase === "intro" && (
+              <motion.div
+                key="intro"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="absolute inset-0"
+              >
+                <ModeSelect onSelect={handleSelectMode} />
+              </motion.div>
+            )}
+
             {phase === "camera" && (
               <motion.div
                 key="camera"
@@ -158,7 +184,7 @@ export default function App() {
                 transition={{ duration: 0.3 }}
                 className="absolute inset-0"
               >
-                <ConfirmScreen onConfirm={handleStartNavigation} />
+                <ConfirmScreen tasks={tasks} source={source} onConfirm={handleStartNavigation} />
               </motion.div>
             )}
 
@@ -172,6 +198,7 @@ export default function App() {
                 className="absolute inset-0"
               >
                 <NavigationScreen
+                  tasks={tasks}
                   currentTaskIndex={currentTaskIndex}
                   onArrived={handleArrived}
                   onBack={goBack}
@@ -189,8 +216,8 @@ export default function App() {
                 className="absolute inset-0"
               >
                 <ArrivalScreen
-                  task={TASKS[currentTaskIndex]}
-                  isLast={currentTaskIndex === TASKS.length - 1}
+                  task={tasks[currentTaskIndex]}
+                  isLast={currentTaskIndex === tasks.length - 1}
                   onNext={handleNext}
                   onBack={goBack}
                 />
@@ -206,7 +233,7 @@ export default function App() {
                 transition={{ duration: 0.4 }}
                 className="absolute inset-0"
               >
-                <CompleteView onRestart={handleRestart} />
+                <CompleteView tasks={tasks} onRestart={handleRestart} />
               </motion.div>
             )}
           </AnimatePresence>

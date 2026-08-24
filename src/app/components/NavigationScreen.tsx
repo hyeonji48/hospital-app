@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { TASKS, NavStep, DirIcon } from "../types";
+import { Task, NavStep, DirIcon } from "../types";
 import { HospitalFloorMap } from "./HospitalFloorMap";
 import { Map, ChevronLeft, X, ArrowRight, ArrowLeft, ArrowUp, ArrowDown } from "lucide-react";
 import { useTTS } from "../hooks/useTTS";
+import { navPhrase, elevatorPhrase, navSeed, navClip } from "../lib/phrases";
 import { TTSReplayButton } from "./ui/TTSReplayButton";
 
 interface Props {
+  tasks: Task[];
   currentTaskIndex: number;
   onArrived: () => void;
   onBack: () => void;
@@ -102,8 +104,8 @@ function ElevatorPanel({ step, onDone }: { step: NavStep; onDone: () => void }) 
 }
 
 // ─── Main NavigationScreen ────────────────────────────────────
-export function NavigationScreen({ currentTaskIndex, onArrived, onBack }: Props) {
-  const task = TASKS[currentTaskIndex];
+export function NavigationScreen({ tasks, currentTaskIndex, onArrived, onBack }: Props) {
+  const task = tasks[currentTaskIndex];
   const [stepIndex, setStepIndex] = useState(0);
   const [showMap, setShowMap] = useState(false);
   const speak = useTTS();
@@ -117,25 +119,24 @@ export function NavigationScreen({ currentTaskIndex, onArrived, onBack }: Props)
   const currentStep = task.steps[stepIndex];
   const isLastStep = stepIndex === task.steps.length - 1;
 
+  // 화면마다 문구를 조금씩 바꿔 읽는다 — 같은 말이 서른 번 반복되면 흘려듣게 된다.
+  // 씨앗이 (태스크, 스텝) 조합이라 같은 화면은 항상 같은 문구다. 다시 듣기가 어색해지지 않는다.
+  const seed = navSeed(currentTaskIndex, stepIndex);
+  const spoken = currentStep.isElevator
+    ? elevatorPhrase(currentStep.elevatorFrom ?? 1, currentStep.elevatorTo ?? 1, seed)
+    : navPhrase(currentStep.instruction, seed, isLastStep);
+
   useEffect(() => {
-    if (currentStep.isElevator) {
-      const from = currentStep.elevatorFrom ?? 1;
-      const to = currentStep.elevatorTo ?? 1;
-      speak(`어르신, 엘리베이터를 타고 ${from}층에서 ${to}층으로 편안하게 이동해 볼까요? 안전하게 내리신 후에, 화면 아래의 도착 버튼을 천천히 눌러주세요.`);
-    } else {
-      const suffix = isLastStep ? "다 오신 후에는 화면 아래의 완료 버튼을 눌러주세요." : "다 오신 후에는 화면 아래의 버튼을 눌러주세요.";
-      speak(`${currentStep.instruction}하시면 됩니다. 서두르지 마시고 천천히 조심해서 다녀오세요. ${suffix}`);
-    }
-  }, [stepIndex, currentTaskIndex, isLastStep]); // eslint-disable-line
+    speak(spoken, { clip: navClip(currentTaskIndex, stepIndex) });
+  }, [spoken, currentTaskIndex, stepIndex]); // eslint-disable-line
 
   const handleReplayTTS = () => {
-    if (currentStep.isElevator) {
-      const from = currentStep.elevatorFrom ?? 1;
-      const to = currentStep.elevatorTo ?? 1;
-      speak(`엘리베이터. ${from}층에서 ${to}층`);
-    } else {
-      speak(currentStep.instruction);
-    }
+    // 다시 듣기는 군더더기 없이 지시문만 읽는다
+    speak(
+      currentStep.isElevator
+        ? `엘리베이터로 ${currentStep.elevatorTo ?? 1}층`
+        : currentStep.instruction.replace(/\n/g, " "),
+    );
   };
 
   const handleNextStep = () => {
@@ -170,7 +171,7 @@ export function NavigationScreen({ currentTaskIndex, onArrived, onBack }: Props)
           </button>
           
           <span className="text-slate-400 text-xl font-bold">
-            {currentTaskIndex + 1} / {TASKS.length}
+            {currentTaskIndex + 1} / {tasks.length}
           </span>
         </div>
 

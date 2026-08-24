@@ -1,12 +1,13 @@
 import { motion } from "motion/react";
-import { TASKS } from "../types";
+import { Task } from "../types";
 import { CheckCircle2, RotateCcw } from "lucide-react";
 
 interface CompleteViewProps {
+  tasks: Task[];
   onRestart: () => void;
 }
 
-export function CompleteView({ onRestart }: CompleteViewProps) {
+export function CompleteView({ tasks, onRestart }: CompleteViewProps) {
   return (
     <div className="flex flex-col h-full bg-[#F2F4F7] items-center justify-between p-6 pb-8 select-none">
       {/* Main content */}
@@ -44,7 +45,7 @@ export function CompleteView({ onRestart }: CompleteViewProps) {
         >
           <p className="text-2xl font-bold text-slate-800 mb-3 border-b border-slate-100 pb-3">완료한 일정</p>
           <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-            {TASKS.map((task, i) => (
+            {tasks.map((task, i) => (
               <motion.div
                 key={task.id}
                 initial={{ opacity: 0, x: -16 }}
@@ -53,7 +54,10 @@ export function CompleteView({ onRestart }: CompleteViewProps) {
                 className="flex items-center gap-3.5"
               >
                 <CheckCircle2 size={24} className="text-[#2F6EFF] shrink-0" strokeWidth={2.5} />
-                <p className="text-slate-700 text-2xl font-bold text-left">{task.title}</p>
+                <p className="text-slate-700 text-xl font-bold text-left break-keep">
+                  {/* "성모관 2층 내과" + "진료" → 한 줄로 끊어 읽는다 */}
+                  {[task.location, task.summary].filter(Boolean).join(" ")}
+                </p>
               </motion.div>
             ))}
           </div>
