@@ -8,12 +8,14 @@ import { TTSReplayButton } from "./ui/TTSReplayButton";
 
 interface ArrivalScreenProps {
   task: Task;
+  /** 사전 녹음 음성을 쓸지. 실제 인식 모드에서는 내용이 달라 쓰면 안 된다 */
+  useClips: boolean;
   isLast: boolean;
   onNext: () => void;
   onBack: () => void;
 }
 
-export function ArrivalScreen({ task, isLast, onNext, onBack }: ArrivalScreenProps) {
+export function ArrivalScreen({ task, useClips, isLast, onNext, onBack }: ArrivalScreenProps) {
   const speak = useTTS();
 
   const spoken = arrivalPhrase(
@@ -24,10 +26,10 @@ export function ArrivalScreen({ task, isLast, onNext, onBack }: ArrivalScreenPro
   );
 
   useEffect(() => {
-    speak(spoken, { clip: arriveClip(task.id) });
+    speak(spoken, useClips ? { clip: arriveClip(task.id) } : {});
   }, [spoken]); // eslint-disable-line
 
-  const handleReplayTTS = () => speak(spoken, { clip: arriveClip(task.id) });
+  const handleReplayTTS = () => speak(spoken, useClips ? { clip: arriveClip(task.id) } : {});
 
   return (
     <div className="flex flex-col h-full bg-[#F2F4F7] p-6 justify-between select-none">

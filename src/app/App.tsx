@@ -74,9 +74,13 @@ export default function App() {
       // 시연 모드는 사진을 보내지 않는다 — 네트워크·API 한도에 노출되지 않는다.
       // 실제 모드는 찍은 사진을 보내고, 실패하면 같은 캐시가 받아준다.
       const result =
-        mode === "demo" || !image
+        mode === "demo"
           ? await transformNotice({ notice: DEMO_NOTICE })
-          : await transformNotice({ image }, { allowDemoFallback: false });
+          : image
+            ? await transformNotice({ image }, { allowDemoFallback: false })
+            : // 실제 인식 모드인데 사진이 없다 = 촬영 실패.
+              // 시연 데이터로 메우면 남의 일정이 뜬다.
+              { source: "fallback" as const, steps: [], elapsedMs: 0, error: "사진을 얻지 못했습니다" };
       const { tasks: built, skipped } = buildTasks(result.steps);
 
       if (result.error) {
@@ -162,7 +166,7 @@ export default function App() {
                 transition={{ duration: 0.3 }}
                 className="absolute inset-0"
               >
-                <CameraView onScan={handleScan} />
+                <CameraView onScan={handleScan} requirePhoto={mode === "live"} />
               </motion.div>
             )}
 
@@ -188,7 +192,12 @@ export default function App() {
                 transition={{ duration: 0.3 }}
                 className="absolute inset-0"
               >
-                <ConfirmScreen tasks={tasks} source={source} onConfirm={handleStartNavigation} />
+                <ConfirmScreen
+                  tasks={tasks}
+                  source={source}
+                  useClips={mode === "demo"}
+                  onConfirm={handleStartNavigation}
+                />
               </motion.div>
             )}
 
@@ -203,6 +212,7 @@ export default function App() {
               >
                 <NavigationScreen
                   tasks={tasks}
+                  useClips={mode === "demo"}
                   currentTaskIndex={currentTaskIndex}
                   onArrived={handleArrived}
                   onBack={goBack}
@@ -221,6 +231,7 @@ export default function App() {
               >
                 <ArrivalScreen
                   task={tasks[currentTaskIndex]}
+                  useClips={mode === "demo"}
                   isLast={currentTaskIndex === tasks.length - 1}
                   onNext={handleNext}
                   onBack={goBack}

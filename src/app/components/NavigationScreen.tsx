@@ -9,6 +9,8 @@ import { TTSReplayButton } from "./ui/TTSReplayButton";
 
 interface Props {
   tasks: Task[];
+  /** 사전 녹음 음성을 쓸지. 실제 인식 모드에서는 내용이 달라 쓰면 안 된다 */
+  useClips: boolean;
   currentTaskIndex: number;
   onArrived: () => void;
   onBack: () => void;
@@ -106,7 +108,7 @@ function ElevatorPanel({ step, onDone }: { step: NavStep; onDone: () => void }) 
 }
 
 // ─── Main NavigationScreen ────────────────────────────────────
-export function NavigationScreen({ tasks, currentTaskIndex, onArrived, onBack }: Props) {
+export function NavigationScreen({ tasks, useClips, currentTaskIndex, onArrived, onBack }: Props) {
   const task = tasks[currentTaskIndex];
   const [stepIndex, setStepIndex] = useState(0);
   const [showMap, setShowMap] = useState(false);
@@ -129,14 +131,14 @@ export function NavigationScreen({ tasks, currentTaskIndex, onArrived, onBack }:
     : navPhrase(currentStep.instruction, seed, isLastStep, currentStep.checkpoint);
 
   useEffect(() => {
-    speak(spoken, { clip: navClip(currentTaskIndex, stepIndex) });
+    speak(spoken, useClips ? { clip: navClip(currentTaskIndex, stepIndex) } : {});
   }, [spoken, currentTaskIndex, stepIndex]); // eslint-disable-line
 
   // 다시 듣기도 **같은 음성 파일**을 재생한다.
   // 예전에는 파일 없이 불러서 브라우저가 제 나름의 목소리로 합성했고,
   // 그래서 자동 안내와 다시 듣기의 목소리가 서로 달랐다.
   const handleReplayTTS = () => {
-    speak(spoken, { clip: navClip(currentTaskIndex, stepIndex) });
+    speak(spoken, useClips ? { clip: navClip(currentTaskIndex, stepIndex) } : {});
   };
 
   /**

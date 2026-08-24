@@ -11,6 +11,8 @@ interface Props {
   tasks: Task[];
   /** 이 결과가 실시간 AI인지 캐시인지 — 시연에서 "진짜 AI 맞아요?"에 답하는 근거 */
   source: TransformSource;
+  /** 사전 녹음 음성을 쓸지. 실제 인식 모드에서는 내용이 달라 쓰면 안 된다 */
+  useClips: boolean;
   onConfirm: () => void;
 }
 
@@ -22,7 +24,7 @@ interface Props {
  * 그것이 바로 인터뷰에서 나온 "정보 과부하" 문제다. 목록은 다 끝난 뒤
  * 완료 화면에서 "오늘 이런 걸 하셨습니다"로 보여주면 된다.
  */
-export function ConfirmScreen({ tasks, source, onConfirm }: Props) {
+export function ConfirmScreen({ tasks, source, useClips, onConfirm }: Props) {
   const speak = useTTS();
 
   const visit = tasks.find((t) => t.doctor);
@@ -36,7 +38,7 @@ export function ConfirmScreen({ tasks, source, onConfirm }: Props) {
     : confirmPhrase(tasks.length, doctor, dept);
 
   useEffect(() => {
-    speak(spoken, { clip: CONFIRM_CLIP });
+    speak(spoken, useClips ? { clip: CONFIRM_CLIP } : {});
   }, [spoken]); // eslint-disable-line
 
   return (
@@ -44,7 +46,7 @@ export function ConfirmScreen({ tasks, source, onConfirm }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between py-2 shrink-0">
         <p className="text-2xl font-bold text-slate-800">접수증 확인</p>
-        <TTSReplayButton onClick={() => speak(spoken, { clip: CONFIRM_CLIP })} />
+        <TTSReplayButton onClick={() => speak(spoken, useClips ? { clip: CONFIRM_CLIP } : {})} />
       </div>
 
       <div className="flex-1 flex flex-col justify-center py-4">
