@@ -87,6 +87,14 @@ export interface TransformOptions {
   /** 사진 경로에서 API가 실패했을 때 사용할 캐시 키.
    *  기본값은 시연용 접수증. */
   fixtureKey?: string;
+  /**
+   * API 실패 시 **시연용 목데이터로 대신 채울지.**
+   *
+   * ⚠️ 실제 인식 모드에서는 반드시 false 여야 한다. 사용자가 자기 접수증을
+   * 찍었는데 남의 일정이 뜨면 그냥 오작동이 아니라 **틀린 안내**다.
+   * 인식에 실패했으면 실패했다고 말하고 다시 찍게 해야 한다.
+   */
+  allowDemoFallback?: boolean;
 }
 
 /** API 응답이 이 시간을 넘으면 폴백 — 심사장에서 화면이 멈추면 안 된다 */
@@ -114,12 +122,19 @@ export async function transformNotice(
     const steps = await callApi(input);
     return done("api", steps, started);
   } catch (err) {
-    // 3) 폴백 — 화면은 절대 비우지 않는다
+    const message = err instanceof Error ? err.message : String(err);
+
+    // 3) 폴백. 단, 실제 인식 모드에서는 목데이터로 메우지 않는다 —
+    //    남의 일정을 보여주느니 "못 읽었다"고 말하는 편이 옳다.
+    if (opts.allowDemoFallback === false) {
+      return { source: "fallback", steps: [], elapsedMs: performance.now() - started, error: message };
+    }
+
     const cached =
       (textKey ? NOTICE_FIXTURES[textKey] : undefined) ?? NOTICE_FIXTURES[fixtureKey];
     return {
       ...done(cached ? "cache" : "fallback", cached ?? FALLBACK_STEPS, started),
-      error: err instanceof Error ? err.message : String(err),
+      error: message,
     };
   }
 }
@@ -184,18 +199,46 @@ function hydrate(raw: RawStep[]): ActionStep[] {
  * <input type="file"> 이나 카메라 캡처 결과를 API가 받는 형태로 바꾼다.
  * data: 접두사를 떼는 이유는 서버가 순수 base64만 받기 때문.
  */
+/** 업로드 용량과 인식률의 절충점. 카메라 촬영 경로와 같은 값 */
+const MAX_EDGE = 1600;
+const JPEG_QUALITY = 0.85;
+
+/**
+ * 앨범에서 고른 사진을 API 가 받는 형태로 바꾼다.
+ *
+ * ★ 반드시 축소해야 한다. 요즘 폰 사진은 4000픽셀·수 MB 라서 원본을 그대로
+ *   보내면 서버의 용량 제한에 걸려 인식이 통째로 실패한다. 그런데 앱은
+ *   조용히 폴백으로 넘어가기 때문에 "왜 안 되지"를 알아채기 어렵다.
+ *   길이를 1600px 로 줄이면 글자 인식에는 충분하고 용량은 10분의 1이 된다.
+ */
 export function fileToImagePayload(file: File): Promise<ImagePayload> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("사진을 읽지 못했습니다"));
-    reader.onload = () => {
-      const result = String(reader.result);
-      const comma = result.indexOf(",");
-      resolve({
-        data: comma >= 0 ? result.slice(comma + 1) : result,
-        mimeType: file.type || "image/jpeg",
-      });
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("사진을 읽지 못했습니다"));
     };
-    reader.readAsDataURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, MAX_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("사진을 처리하지 못했습니다"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      const dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+      resolve({ data: dataUrl.slice(dataUrl.indexOf(",") + 1), mimeType: "image/jpeg" });
+    };
+
+    img.src = url;
   });
 }

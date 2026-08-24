@@ -76,9 +76,13 @@ export default function App() {
       const result =
         mode === "demo" || !image
           ? await transformNotice({ notice: DEMO_NOTICE })
-          : await transformNotice({ image });
+          : await transformNotice({ image }, { allowDemoFallback: false });
       const { tasks: built, skipped } = buildTasks(result.steps);
 
+      if (result.error) {
+        // 인식이 실패한 이유를 남긴다 — 조용히 폴백되면 원인을 못 찾는다
+        console.warn(`[동행온] 인식 실패 (${result.source}):`, result.error);
+      }
       if (skipped.length > 0) {
         // 경로를 못 만든 단계는 화면에서 빠진다. 조용히 사라지면 원인을 못 찾으므로 남긴다.
         console.warn("[동행온] 경로를 만들지 못한 단계:", skipped);

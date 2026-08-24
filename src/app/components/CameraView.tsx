@@ -161,13 +161,14 @@ export function CameraView({ onScan }: CameraViewProps) {
           className="w-full flex items-center justify-center gap-2 text-white/70 text-lg py-1 active:text-white disabled:opacity-40"
         >
           <ImageUp size={20} />
-          사진에서 고르기
+          앨범에서 고르기
         </button>
         <input
           ref={fileRef}
           type="file"
           accept="image/*"
-          capture="environment"
+          /* capture 속성을 두면 폰에서 갤러리 대신 카메라가 열린다.
+             촬영은 위의 [촬영] 버튼이 맡고, 여기는 앨범에서 고르는 길이다. */
           className="hidden"
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
