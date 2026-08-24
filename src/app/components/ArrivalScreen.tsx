@@ -55,7 +55,7 @@ export function ArrivalScreen({ task, useClips, isLast, onNext, onBack }: Arriva
           className="w-full bg-white rounded-[2rem] p-8 shadow-[0_8px_30px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center text-center gap-6 my-auto"
         >
           {/* Arrival title */}
-          <p className="text-4xl font-extrabold text-slate-900 leading-snug whitespace-pre-line">
+          <p className="text-4xl font-extrabold text-slate-900 leading-snug whitespace-pre-line break-keep">
             {task.arrivalTitle}
           </p>
 
@@ -70,7 +70,7 @@ export function ArrivalScreen({ task, useClips, isLast, onNext, onBack }: Arriva
           <div className="w-12 h-1 bg-[#2F6EFF] rounded-full" />
 
           {/* Instruction */}
-          <p className="text-2xl font-medium text-slate-500 leading-relaxed whitespace-pre-line">
+          <p className="text-2xl font-medium text-slate-500 leading-relaxed whitespace-pre-line break-keep">
             {task.arrivalDetail}
           </p>
         </motion.div>

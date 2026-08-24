@@ -17,6 +17,21 @@ interface Props {
 }
 
 // ─── Direction icon mapper ────────────────────────────────────
+/**
+ * 글자 수에 맞춰 크기를 줄인다.
+ *
+ * 고정 크기로 두면 "진료협력센터" 같은 긴 이름에서 줄이 넘쳐, 한글이 단어
+ * 중간에서 잘린다("진료협력센터 앞에 / 서"). `break-keep` 으로 단어를 안 자르게
+ * 하고, 그래도 안 들어가면 글자를 줄인다.
+ */
+function fitClass(text: string, sizes: string[]): string {
+  const longest = Math.max(...text.split("\n").map((l) => l.trim().length));
+  if (longest <= 5) return sizes[0];
+  if (longest <= 8) return sizes[1];
+  if (longest <= 11) return sizes[2];
+  return sizes[3];
+}
+
 function DirIconComponent({ dir }: { dir: DirIcon }) {
   const cls = "text-white";
   const size = 52;
@@ -62,7 +77,7 @@ function ElevatorPanel({ step, onDone }: { step: NavStep; onDone: () => void }) 
   const from = step.elevatorFrom ?? 1;
   const to = step.elevatorTo ?? 1;
   // 버튼이 "무엇을 확인하는 것인지" 말해준다. 그냥 '완료'는 뭐가 완료인지 알 수 없다.
-  const label = `${to}층에 내렸어요`;
+  const label = `${to}층 도착`;
 
   return (
     <div className="flex flex-col h-full justify-between select-none">
@@ -145,11 +160,7 @@ export function NavigationScreen({ tasks, useClips, currentTaskIndex, onArrived,
    * 버튼 문구 — 이 화면에서 **어디까지 가면 누르는지**를 말한다.
    * "완료"만으로는 무엇이 완료인지 알 수 없어 어르신이 그냥 눌러 넘기게 된다.
    */
-  const doneLabel = currentStep.checkpoint
-    ? isLastStep
-      ? `${currentStep.checkpoint} 도착`
-      : `${currentStep.checkpoint}에 왔어요`
-    : "완료";
+  const doneLabel = currentStep.checkpoint ? `${currentStep.checkpoint} 도착` : "완료";
 
   const handleNextStep = () => {
     setShowMap(false);
@@ -232,7 +243,14 @@ export function NavigationScreen({ tasks, useClips, currentTaskIndex, onArrived,
                   </motion.div>
 
                   {/* Main instruction */}
-                  <p className="text-3xl font-extrabold text-slate-900 leading-snug px-2 whitespace-pre-line">
+                  <p
+                    className={`${fitClass(currentStep.headline, [
+                      "text-[2.6rem]",
+                      "text-4xl",
+                      "text-3xl",
+                      "text-2xl",
+                    ])} font-extrabold text-slate-900 leading-snug px-2 whitespace-pre-line break-keep`}
+                  >
                     {currentStep.headline}
                   </p>
 
@@ -254,7 +272,12 @@ export function NavigationScreen({ tasks, useClips, currentTaskIndex, onArrived,
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="w-full rounded-[1.75rem] py-6 text-3xl font-bold text-white bg-[#2F6EFF] active:bg-[#1554D4] transition-colors shadow-lg shadow-[#2F6EFF]/15"
+                  className={`w-full rounded-[1.75rem] py-6 ${fitClass(doneLabel, [
+                    "text-3xl",
+                    "text-3xl",
+                    "text-2xl",
+                    "text-xl",
+                  ])} font-bold text-white bg-[#2F6EFF] active:bg-[#1554D4] transition-colors shadow-lg shadow-[#2F6EFF]/15 break-keep px-3`}
                   whileTap={{ scale: 0.97 }}
                 >
                   {doneLabel}

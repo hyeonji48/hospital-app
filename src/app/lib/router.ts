@@ -430,9 +430,9 @@ export function toNavSteps(route: Route, destLabel: string): NavStep[] {
           const after = nextLeg.points[Math.min(1, nextLeg.points.length - 1)];
           steps.push({
             // 화면은 단어만 — 방향은 큰 화살표가 이미 말해준다
-            headline: nextLeg.landmark ? `${nextLeg.landmark} 앞에서\n${word}` : `${word}으로`,
+            headline: nextLeg.landmark ? `${nextLeg.landmark}\n${word}` : `${word}으로`,
             instruction: `${li === 0 ? prefix : ""}${where}${word}${particleRo(word)} 도세요`,
-            checkpoint: nextLeg.landmark ? `${nextLeg.landmark} 앞` : undefined,
+            checkpoint: nextLeg.landmark,
             dirIcon: nextLeg.turn,
             detail: `${target} 방향`,
             floor,
