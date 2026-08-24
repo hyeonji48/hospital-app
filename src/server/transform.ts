@@ -8,12 +8,18 @@
 // AI 제공사는 이 파일 하나에만 묶여 있다. 다른 회사로 갈아타도
 // 화면·장소 사전·캐시·폴백·경로계산은 한 줄도 바뀌지 않는다.
 //
-// Vercel Functions (Node.js 런타임) Web Handler.
+// ⚠️ 이 파일은 **직접 배포되지 않는다.** `npm run build` 가 esbuild 로 묶어
+//    `api/transform.js` 를 만들고, Vercel 은 그 결과물만 실행한다.
+//
+//    왜냐하면 Vercel 은 `api/*.ts` 를 컴파일만 하고 **바깥 폴더의 import 는
+//    따라가지 않는다.** 예전에 여기서 `../src/app/data/places` 를 직접 불러왔다가
+//    배포 후 ERR_MODULE_NOT_FOUND 로 함수가 통째로 죽었다. 로컬에서는 멀쩡했다.
+//
 // 배포: https://hospital-app-xi-sooty.vercel.app/api/transform
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { z } from "zod";
-import { placeCatalogForPrompt, placeIds } from "../src/app/data/places";
+import { placeCatalogForPrompt, placeIds } from "../app/data/places";
 
 const MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
 

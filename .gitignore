@@ -3,3 +3,7 @@ node_modules
 .env
 .vercel
 .env*
+
+# api/transform.js 는 빌드 산출물이지만 **커밋한다.**
+# Vercel 은 저장소의 api/ 를 스캔해 함수 경로를 만들기 때문에,
+# 파일이 git 에 없으면 라우트 자체가 생기지 않는다.

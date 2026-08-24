@@ -4,14 +4,15 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && npm run build:api",
     "dev": "vite",
     "gen:fixture": "node scripts/gen-fixture.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "dev:api": "vercel dev",
     "gen:speech": "esbuild scripts/gen-speech.ts --bundle --platform=node --format=esm --packages=external --outfile=node_modules/.cache/gen-speech.mjs --log-level=error && node node_modules/.cache/gen-speech.mjs",
     "try:phone": "vite build && vite preview --host",
-    "check:key": "node scripts/check-key.mjs"
+    "check:key": "node scripts/check-key.mjs",
+    "build:api": "esbuild src/server/transform.ts --bundle --platform=node --format=esm --packages=external --outfile=api/transform.js --log-level=error"
   },
   "dependencies": {
     "@google/genai": "^2.18.0",
