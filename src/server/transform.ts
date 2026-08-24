@@ -21,7 +21,10 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { z } from "zod";
 import { placeCatalogForPrompt, placeIds } from "../app/data/places";
 
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+// ⚠️ 모델 이름은 고정한다. `gemini-flash-latest` 같은 별칭을 쓰면 대회 도중
+//    모델이 바뀌어 결과가 달라질 수 있다. 바꿀 때는 환경변수로.
+//    (gemini-2.5-flash 는 신규 사용자에게 더 이상 제공되지 않는다)
+const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.6-flash";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
 
