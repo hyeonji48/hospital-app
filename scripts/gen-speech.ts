@@ -19,6 +19,7 @@ import {
   writeFileSync, readFileSync, mkdirSync, unlinkSync, readdirSync, renameSync, rmSync,
 } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { buildSpeechScript } from "../src/app/lib/phrases";
 import { buildTasks } from "../src/app/lib/buildTasks";
 import { NOTICE_FIXTURES, DEMO_FIXTURE_KEY } from "../src/app/data/noticeFixtures";
@@ -110,6 +111,17 @@ function compress(src: string, m4a: string): boolean {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * 문장의 지문.
+ *
+ * ★ 파일 이름만 보고 건너뛰면, **문장이 바뀌었는데 옛 음성이 그대로 남는다.**
+ *   도면이나 경로를 고치면 안내 문장이 바뀌는데 파일명은 그대로라
+ *   화면과 소리가 어긋난 채 배포된다. 지문을 저장해 두고 달라지면 다시 굽는다.
+ */
+function textHash(text: string): string {
+  return createHash("sha1").update(text).digest("hex").slice(0, 12);
+}
 
 /**
  * 429 응답을 해석한다.
@@ -215,9 +227,33 @@ async function main() {
   const staged = voiceChanged
     ? readdirSync(STAGING).filter((f) => /\.(m4a|wav|aiff)$/.test(f))
     : [];
-  const existing = new Set(
+  const present = new Set(
     (voiceChanged ? staged : files).map((f) => f.replace(/\.(m4a|wav|aiff)$/, "")),
   );
+
+  // 문장이 바뀐 클립은 파일이 있어도 다시 만든다
+  const prevHashes: Record<string, string> = (prev as { hashes?: Record<string, string> }).hashes ?? {};
+  const hashes: Record<string, string> = {};
+  for (const item of script) hashes[item.clip] = textHash(item.text);
+
+  const stale = script.filter(
+    (i) => present.has(i.clip) && prevHashes[i.clip] && prevHashes[i.clip] !== hashes[i.clip],
+  );
+  if (stale.length) {
+    console.log(`문장이 바뀐 ${stale.length}개는 다시 만듭니다: ${stale.map((s2) => s2.clip).join(", ")}\n`);
+    for (const i of stale) {
+      present.delete(i.clip);
+      for (const ext2 of ["m4a", "wav", "aiff"]) {
+        try {
+          unlinkSync(`${workDir}/${i.clip}.${ext2}`);
+        } catch {
+          /* 없으면 그만 */
+        }
+      }
+    }
+  }
+
+  const existing = present;
   if (existing.size) {
     console.log(
       voiceChanged
@@ -346,7 +382,7 @@ async function main() {
 
   writeFileSync(
     `${OUT_DIR}/manifest.json`,
-    JSON.stringify({ ext, signature, clips: [...new Set(done)] }, null, 2) + "\n",
+    JSON.stringify({ ext, signature, hashes, clips: [...new Set(done)] }, null, 2) + "\n",
   );
 
   console.log(`\n완료: ${total}/${script.length}개 → ${OUT_DIR}/*.${ext}`);

@@ -40,6 +40,7 @@ export interface Room {
   attach: string;
   /** 평면도에 표기가 없어 위치를 추정한 곳 — 답사 확인 대상 */
   estimated?: boolean;
+
 }
 
 /** 통로 지점 */
@@ -94,10 +95,16 @@ const FLOOR_1: Room[] = [
   { x:228, y:204, w: 46, h: 22, label:"진료협력",   sub:"센터",         fullName:"진료협력센터", kind:"desk", floor:1, placeIds:["smg-1f-referral"], attach:"w1-esouth" },
   { x:160, y:272, w: 48, h: 16, label:"정문출입구", sub:"🚪",           kind:"entrance", floor:1, placeIds:["smg-1f-entrance"], attach:"w1-gate" },
 
-  // ⚠️ 아래 3곳은 공식 평면도에 표기가 없다. 위치는 추정이며 답사 확인 대상.
-  { x:120, y:236, w: 40, h: 24, label:"안내데스크", sub:"ℹ️",  kind:"desk", floor:1, placeIds:["smg-1f-info"],      attach:"w1-south", estimated:true },
-  { x:212, y:236, w: 40, h: 24, label:"원무과",     sub:"📝 접수", kind:"desk", floor:1, placeIds:["smg-1f-reception"], attach:"w1-south", estimated:true },
-  { x:256, y:236, w: 44, h: 24, label:"수납창구",   sub:"💳",  kind:"desk", floor:1, placeIds:["smg-1f-payment"],   attach:"w1-esouth", estimated:true },
+  // ✅ 2026-08-25 현장답사로 확인. 공식 평면도에는 표기가 없던 곳들이다.
+  //    안내데스크 — 영상의학팀 아래, 약국 오른쪽. 정문에서 왼쪽 앞.
+  //    원무·수납  — 진료협력센터 아래, 정문에서 오른쪽. 한 구역에 붙어 있다.
+  //    키오스크   — 원무·수납 앞에 여러 대. NFC 태그를 붙일 자리이자 동선의 시작점.
+  { x:118, y:206, w: 52, h: 28, label:"안내데스크", sub:"ℹ️",     kind:"desk", floor:1, placeIds:["smg-1f-info"],      attach:"w1-south" },
+  { x:248, y:230, w: 48, h: 30, label:"원무과",     sub:"📝 접수", kind:"desk", floor:1, placeIds:["smg-1f-reception"], attach:"w1-esouth" },
+  { x:300, y:230, w: 52, h: 30, label:"수납창구",   sub:"💳 수납", kind:"desk", floor:1, placeIds:["smg-1f-payment"],   attach:"w1-esouth" },
+  // 목적지는 아니지만 **길안내 지형지물로 쓰인다.** 어르신에게 "키오스크 앞"은
+  // "복도 분기점"보다 훨씬 알아보기 쉬운 기준점이다.
+  { x:228, y:262, w: 60, h: 20, label:"키오스크",   sub:"🖥️",     kind:"facility", floor:1, attach:"w1-esouth" },
 ];
 
 // ═══════════════════════════════════════════════════════════
