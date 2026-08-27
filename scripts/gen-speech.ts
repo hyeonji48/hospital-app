@@ -118,12 +118,20 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * 정확히 말해준다.** 예전에는 이걸 무시하고 고정 시간만 기다려서, 분당 한도에
  * 걸린 것까지 실패로 처리하고 버렸다.
  */
-function readQuotaError(msg: string): { isQuota: boolean; perDay: boolean; retrySec: number } {
+function readQuotaError(msg: string): {
+  isQuota: boolean;
+  perDay: boolean;
+  retrySec: number;
+  transient: boolean;
+} {
+  // 503 = 모델이 일시적으로 붐빔. 한도와 무관하므로 잠깐 뒤 다시 하면 된다.
+  // 예전에는 이걸 실패로 처리해 클립 하나를 그냥 잃었다.
+  const transient = /\b503\b|UNAVAILABLE|high demand|overloaded/i.test(msg);
   const isQuota = /429|RESOURCE_EXHAUSTED|quota/i.test(msg);
-  if (!isQuota) return { isQuota: false, perDay: false, retrySec: 0 };
+  if (!isQuota) return { isQuota: false, perDay: false, retrySec: 0, transient };
   const perDay = /PerDay/i.test(msg);
   const m = msg.match(/"retryDelay"\s*:\s*"(\d+)s"/) ?? msg.match(/retry in ([\d.]+)s/);
-  return { isQuota: true, perDay, retrySec: m ? Math.ceil(Number(m[1])) + 2 : 35 };
+  return { isQuota: true, perDay, retrySec: m ? Math.ceil(Number(m[1])) + 2 : 35, transient: false };
 }
 
 async function main() {
@@ -197,15 +205,26 @@ async function main() {
     console.log(`  이전: ${prev.signature}`);
     console.log(`  지금: ${signature}`);
     console.log("전부 새로 만듭니다. 다 만들어지기 전까지 기존 파일은 그대로 둡니다.\n");
-    rmSync(STAGING, { recursive: true, force: true });
     mkdirSync(STAGING, { recursive: true });
   }
 
-  // 이어받기 — 목소리가 그대로일 때만 의미가 있다
+  // 이어받기.
+  // 목소리를 바꾸는 중이면 **임시 폴더에 쌓아둔 것**을 기준으로 건너뛴다.
+  // 무료 티어 하루 한도 때문에 며칠에 걸쳐 채워야 할 수 있는데,
+  // 매번 처음부터 다시 만들면 영영 못 끝낸다.
+  const staged = voiceChanged
+    ? readdirSync(STAGING).filter((f) => /\.(m4a|wav|aiff)$/.test(f))
+    : [];
   const existing = new Set(
-    voiceChanged ? [] : files.map((f) => f.replace(/\.(m4a|wav|aiff)$/, "")),
+    (voiceChanged ? staged : files).map((f) => f.replace(/\.(m4a|wav|aiff)$/, "")),
   );
-  if (existing.size) console.log(`이미 있는 ${existing.size}개는 건너뜁니다.\n`);
+  if (existing.size) {
+    console.log(
+      voiceChanged
+        ? `지난번에 만들어둔 ${existing.size}개는 건너뜁니다. (${script.length}개 다 모이면 교체)\n`
+        : `이미 있는 ${existing.size}개는 건너뜁니다.\n`,
+    );
+  }
 
   const done: string[] = [...existing];
   let modelIdx = 0;
@@ -283,6 +302,14 @@ async function main() {
           continue;
         }
 
+        if (q.transient && attempt < 5) {
+          // 모델 혼잡 — 조금 기다렸다 다시. 한도를 쓰는 게 아니므로 재시도가 이득이다.
+          const wait = 8 * (attempt + 1);
+          process.stdout.write(`모델 혼잡, ${wait}초 후 재시도 … `);
+          await sleep(wait * 1000);
+          continue;
+        }
+
         console.log(`✗ ${msg.slice(0, 90)}`);
         break;
       }
@@ -297,13 +324,16 @@ async function main() {
 
   if (voiceChanged) {
     if (total < script.length) {
-      // 반만 바뀌면 재생 도중 목소리가 섞인다 — 차라리 기존 것을 그대로 둔다
-      rmSync(STAGING, { recursive: true, force: true });
-      console.log(`\n❌ ${total}/${script.length}개만 만들어져 목소리 교체를 취소했습니다.`);
-      console.log("   기존 음성은 그대로 남아 있습니다.");
-      console.log("   한도가 풀린 뒤 다시 실행하거나, TTS_ENGINE=say 로 만드세요.");
+      // 반만 바꾸면 재생 도중 목소리가 섞인다 → 아직 교체하지 않는다.
+      // 다만 만들어둔 것은 **버리지 않고 남긴다.** 하루 한도에 걸려도
+      // 다음 날 이어서 채우면 되도록.
+      console.log(`\n⏸  ${total}/${script.length}개 완료. 아직 교체하지 않습니다.`);
+      console.log(`   ${script.length - total}개가 더 필요합니다. 만들어둔 것은 보관됩니다.`);
+      console.log("   내일 같은 명령을 다시 실행하면 나머지만 채웁니다.");
+      console.log("   지금 음성은 그대로 유지됩니다.");
       return;
     }
+    console.log("\n전부 모였습니다. 기존 음성을 교체합니다.");
     // 전부 성공 — 이제 안전하게 갈아끼운다
     for (const f of readdirSync(OUT_DIR)) {
       if (/\.(m4a|wav|aiff)$/.test(f)) unlinkSync(`${OUT_DIR}/${f}`);
