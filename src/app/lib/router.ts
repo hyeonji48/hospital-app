@@ -302,7 +302,13 @@ function nearestLandmark(
   exclude: Array<string | undefined> = [],
 ): string | undefined {
   const g = graph();
-  let best: { label: string; d: number } | null = null;
+  // 엘리베이터·계단·화장실은 층마다 있어서 "여기가 어디인지" 를 알려주지 못한다.
+  // 진료과·검사실 이름을 먼저 쓰고, 근처에 없을 때만 이런 것들로 내려간다.
+  // 어르신에게 "채혈실 앞에서"는 "계단 앞에서"보다 훨씬 분명한 기준점이다.
+  const GENERIC = /엘리베이터|계단|화장실/;
+  let named: { label: string; d: number } | null = null;
+  let generic: { label: string; d: number } | null = null;
+
   for (const n of g.nodes.values()) {
     if (n.floor !== floor || n.kind !== "room" || !n.label) continue;
     // 출발지·목적지를 랜드마크로 쓰면 "엘리베이터에서 내려 엘리베이터가 보이면" 같은 말이 된다
@@ -310,10 +316,16 @@ function nearestLandmark(
     // 화장실 아이콘 등 이름이 기호인 방은 랜드마크로 부적절
     if (!/[가-힣]/.test(n.label)) continue;
     const d = Math.hypot(n.x - pt.x, n.y - pt.y);
-    if (!best || d < best.d) best = { label: n.label, d };
+    if (GENERIC.test(n.label)) {
+      if (!generic || d < generic.d) generic = { label: n.label, d };
+    } else if (!named || d < named.d) {
+      named = { label: n.label, d };
+    }
   }
-  // 너무 멀면 랜드마크로 쓸모가 없다
-  return best && best.d < 60 ? best.label : undefined;
+
+  // 이름 있는 곳이 너무 멀면 오히려 헷갈린다 — 그때는 엘리베이터·계단이 낫다
+  const best = named && named.d <= 90 ? named : (generic ?? named);
+  return best && best.d < 110 ? best.label : undefined;
 }
 
 /** 유의미한 회전으로 볼 각도 (약 35°) */
@@ -327,10 +339,15 @@ function splitIntoLegs(segment: GraphNode[], destLabel: string, origin?: string)
   if (pts.length < 2) return [];
 
   const floor = pts[0].floor;
-  // 출발지만 제외한다. 목적지까지 빼면 "엘리베이터로 가세요" 구간에서
-  // 정작 엘리베이터가 랜드마크 후보에서 빠져 "여기까지 왔어요" 같은 말이 나온다.
-  const skip = [origin];
-  void destLabel;
+  // 출발지는 항상 제외한다 ("엘리베이터에서 내려 엘리베이터가 보이면" 방지).
+  //
+  // 목적지는 경우가 갈린다.
+  //  · 엘리베이터·계단으로 가는 구간이면 **그것을 지형지물로 써야** 한다.
+  //    안 그러면 기준점 없는 "오른쪽으로 도세요"가 된다.
+  //  · 진료실·검사실로 가는 구간이면 빼야 한다. 안 그러면
+  //    "채혈실 앞에서 왼쪽으로 → 곧장 가면 채혈실입니다" 처럼 같은 말이 반복된다.
+  const targetIsWaypoint = /엘리베이터|계단/.test(destLabel);
+  const skip = targetIsWaypoint ? [origin] : [origin, destLabel];
 
   // 1) 꺾이는 지점을 먼저 전부 찾는다
   const breaks: Array<{ at: number; turn: "left" | "right"; landmark?: string }> = [];
@@ -416,9 +433,19 @@ export function toNavSteps(route: Route, destLabel: string): NavStep[] {
       const legs = splitIntoLegs(segment, target, segment[0].label);
       const prefix = justChangedFloor ? "엘리베이터에서 내려\n" : "";
 
+      // 기준점 없이 "오른쪽으로 도세요"만 말하는 화면은 만들지 않는다.
+      // 무엇을 기준으로 오른쪽인지 알 수 없어 어르신이 판단할 수가 없다.
+      // 그 구간의 경로는 다음 화면의 약도에 이어 붙여, 길 자체는 그대로 보이게 한다.
+      let carry: GraphNode[] = [];
+
       legs.forEach((leg, li) => {
         const isLastLeg = li === legs.length - 1;
         const nextLeg = legs[li + 1];
+
+        if (!isLastLeg && nextLeg?.turn && !nextLeg.landmark) {
+          carry = [...carry, ...leg.points];
+          return;
+        }
 
         if (!isLastLeg && nextLeg?.turn) {
           // 이 구간을 걷다가 끝에서 꺾는다
@@ -426,6 +453,8 @@ export function toNavSteps(route: Route, destLabel: string): NavStep[] {
           const where = nextLeg.landmark ? `${nextLeg.landmark} 앞에서\n` : "";
           // 꺾는 지점과 꺾은 뒤 방향을 지도에 넘긴다 — 말로만 "왼쪽"이라고 하면
           // 어느 쪽이 왼쪽인지 헷갈린다. 지도에 화살표로 같이 보여준다.
+          const pts = [...carry, ...leg.points];
+          carry = [];
           const pivot = leg.points[leg.points.length - 1];
           const after = nextLeg.points[Math.min(1, nextLeg.points.length - 1)];
           steps.push({
@@ -436,9 +465,9 @@ export function toNavSteps(route: Route, destLabel: string): NavStep[] {
             dirIcon: nextLeg.turn,
             detail: `${target} 방향`,
             floor,
-            userPos: [leg.points[0].x, leg.points[0].y],
+            userPos: [pts[0].x, pts[0].y],
             destPos: [pivot.x, pivot.y],
-            pathPoints: leg.points.map((n) => [n.x, n.y] as [number, number]),
+            pathPoints: pts.map((n) => [n.x, n.y] as [number, number]),
             turnAt: [pivot.x, pivot.y],
             turnHeading: [after.x - pivot.x, after.y - pivot.y],
             turnDir: nextLeg.turn,
@@ -450,6 +479,8 @@ export function toNavSteps(route: Route, destLabel: string): NavStep[] {
 
         // 마지막 구간
         if (isFinal) {
+          const pts = [...carry, ...leg.points];
+          carry = [];
           steps.push({
             headline: target,
             instruction: `${legs.length === 1 ? prefix : ""}곧장 가면\n${target}입니다`,
@@ -458,9 +489,9 @@ export function toNavSteps(route: Route, destLabel: string): NavStep[] {
             detail: `${target} 방향`,
             floor,
             targetRoom: target,
-            userPos: [leg.points[0].x, leg.points[0].y],
-            destPos: [leg.points[leg.points.length - 1].x, leg.points[leg.points.length - 1].y],
-            pathPoints: leg.points.map((n) => [n.x, n.y] as [number, number]),
+            userPos: [pts[0].x, pts[0].y],
+            destPos: [pts[pts.length - 1].x, pts[pts.length - 1].y],
+            pathPoints: pts.map((n) => [n.x, n.y] as [number, number]),
           });
         }
         // 층 이동으로 이어지는 마지막 구간은 화면을 만들지 않는다.
