@@ -1,6 +1,6 @@
 {
   "ext": "m4a",
-  "signature": "say:Yuna:160:hq",
+  "signature": "gemini:gemini-2.5-flash-preview-tts:Kore:hq",
   "hashes": {
     "confirm": "cf5707e9b15f",
     "nav-0-0": "4cde84ed3dd7",
@@ -26,27 +26,27 @@
     "arrive-4": "3019817be9c1"
   },
   "clips": [
-    "confirm",
-    "nav-0-0",
-    "nav-0-1",
-    "nav-0-2",
-    "nav-0-3",
-    "nav-0-4",
     "arrive-1",
-    "nav-1-0",
-    "nav-1-1",
-    "nav-1-2",
-    "nav-1-3",
-    "nav-1-4",
     "arrive-2",
-    "nav-2-0",
+    "arrive-3",
+    "arrive-4",
+    "confirm",
+    "nav-0-2",
+    "nav-0-4",
+    "nav-1-1",
+    "nav-1-4",
     "nav-2-1",
     "nav-2-2",
     "nav-2-3",
-    "arrive-3",
     "nav-3-0",
-    "nav-3-1",
     "nav-3-2",
-    "arrive-4"
+    "nav-0-0",
+    "nav-0-1",
+    "nav-0-3",
+    "nav-1-0",
+    "nav-1-2",
+    "nav-1-3",
+    "nav-2-0",
+    "nav-3-1"
   ]
 }
